@@ -17,6 +17,7 @@ probe-and-restart fallback rather than unsafe mid-generation layer activation.
 - Deterministic greedy generation profiling with TTFT and decode timing.
 - JSONL task harness and exact-match baseline evaluation.
 - ShortGPT-inspired block-influence measurement.
+- Single-layer, adjacent-group, and random ablation route generation.
 - Constrained, deterministic candidate-route generation.
 - Multi-objective Pareto filtering for measured routes.
 - Offline unit tests using a toy causal transformer.
@@ -64,6 +65,19 @@ adaptivedepth compile-candidates `
   --influence-file experiments/block_influence.json `
   --compiler-config configs/compiler.yaml `
   --output experiments/candidate_routes.yaml
+```
+
+Generate an ablation suite and benchmark every route:
+
+```powershell
+adaptivedepth generate-ablations `
+  --strategy single `
+  --num-layers 24 `
+  --output experiments/single_layer_routes.yaml
+
+adaptivedepth benchmark-routes `
+  --routes-file experiments/single_layer_routes.yaml `
+  --output experiments/single_layer_benchmarks.json
 ```
 
 Candidate routes are not considered valid until Phase 4 benchmarks their

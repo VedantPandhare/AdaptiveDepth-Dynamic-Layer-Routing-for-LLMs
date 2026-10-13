@@ -43,7 +43,7 @@ class BlockInfluenceAnalyzer:
             before = _hidden_tensor(inputs[0]).detach().float()
             after = _hidden_tensor(output).detach().float()
             score = 1.0 - functional.cosine_similarity(before, after, dim=-1).mean()
-            self._totals[layer_index] += float(score.cpu())
+            self._totals[layer_index] += max(0.0, float(score.cpu()))
             self._counts[layer_index] += 1
 
         return measure

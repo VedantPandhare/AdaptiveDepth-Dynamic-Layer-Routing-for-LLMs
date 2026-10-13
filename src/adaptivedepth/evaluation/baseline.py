@@ -128,6 +128,7 @@ def run_benchmark(
             )
 
         results: list[CaseResult] = []
+        all_profiles: list[GenerationProfile] = []
         for case in cases:
             profiles = [
                 profile_greedy_generation(
@@ -139,6 +140,7 @@ def run_benchmark(
                 )
                 for _ in range(settings.measured_runs)
             ]
+            all_profiles.extend(profiles)
             profile = _median_profile(profiles)
             results.append(
                 CaseResult(
@@ -151,7 +153,7 @@ def run_benchmark(
                 )
             )
 
-    totals = [result.profile["total_ms"] for result in results]
+    totals = [profile.total_ms for profile in all_profiles]
     return BenchmarkReport(
         route_id=route_id,
         active_layers=active_layers,
@@ -159,9 +161,9 @@ def run_benchmark(
         accuracy=sum(result.exact_match for result in results) / len(results),
         median_total_ms=statistics.median(totals),
         p95_total_ms=_percentile_95(totals),
-        median_ttft_ms=statistics.median(result.profile["ttft_ms"] for result in results),
+        median_ttft_ms=statistics.median(profile.ttft_ms for profile in all_profiles),
         median_decode_ms_per_token=statistics.median(
-            result.profile["decode_ms_per_token"] for result in results
+            profile.decode_ms_per_token for profile in all_profiles
         ),
         results=results,
     )

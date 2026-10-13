@@ -7,6 +7,11 @@ import torch
 from torch import nn
 
 from adaptivedepth.analysis.block_influence import BlockInfluenceAnalyzer
+from adaptivedepth.analysis.ablation import (
+    adjacent_group_deletion_routes,
+    random_deletion_routes,
+    single_layer_deletion_routes,
+)
 from adaptivedepth.compiler.candidate_search import generate_candidate_routes
 from adaptivedepth.compiler.pareto import RouteMeasurement, pareto_frontier
 from adaptivedepth.config import BenchmarkSettings
@@ -171,3 +176,17 @@ def test_generation_profiler_and_baseline_harness() -> None:
     assert report.route_id == "full"
     assert report.accuracy == 1.0
     assert report.active_layers == 4
+
+
+def test_ablation_route_generators_preserve_constraints() -> None:
+    protected = {0, 7}
+    singles = single_layer_deletion_routes(8, protected)
+    groups = adjacent_group_deletion_routes(8, 2, protected)
+    random_routes = random_deletion_routes(
+        8, active_budget=5, samples=3, protected_layers=protected, seed=9
+    )
+    assert len(singles) == 6
+    assert groups
+    for route in singles + groups + random_routes:
+        assert protected.issubset(route.active_layers)
+    assert all(len(route.active_layers) == 5 for route in random_routes)

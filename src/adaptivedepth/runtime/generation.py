@@ -35,6 +35,7 @@ class GenerationProfile:
     total_ms: float
     decode_ms_per_token: float
     tokens_per_second: float
+    peak_memory_mb: float | None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -54,6 +55,8 @@ def profile_greedy_generation(
     input_ids = encoded["input_ids"]
     attention_mask = encoded.get("attention_mask", torch.ones_like(input_ids))
 
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
     _synchronize(device)
     started = perf_counter()
     outputs = model(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
@@ -92,4 +95,9 @@ def profile_greedy_generation(
         total_ms=total_ms,
         decode_ms_per_token=decode_ms / decode_steps if decode_steps else 0.0,
         tokens_per_second=(output_tokens / total_ms * 1000) if total_ms else 0.0,
+        peak_memory_mb=(
+            torch.cuda.max_memory_allocated(device) / (1024**2)
+            if device.type == "cuda"
+            else None
+        ),
     )

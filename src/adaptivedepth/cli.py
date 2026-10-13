@@ -7,6 +7,11 @@ from typing import Annotated
 import typer
 
 from adaptivedepth.analysis.block_influence import BlockInfluenceAnalyzer
+from adaptivedepth.analysis.ablation import (
+    adjacent_group_deletion_routes,
+    random_deletion_routes,
+    single_layer_deletion_routes,
+)
 from adaptivedepth.compiler.candidate_search import generate_candidate_routes
 from adaptivedepth.compiler.pareto import RouteMeasurement, pareto_frontier
 from adaptivedepth.config import load_compiler_settings, load_project_settings
@@ -112,6 +117,68 @@ def compile_candidates(
     )
     RouteLibrary(routes=routes).save(output)
     typer.echo(f"Saved {len(routes)} candidates to {output}")
+
+
+@app.command("generate-ablations")
+def generate_ablations(
+    strategy: Annotated[str, typer.Option(help="single, adjacent, or random")],
+    num_layers: Annotated[int, typer.Option(min=2)],
+    output: Annotated[Path, typer.Option()] = Path("experiments/ablation_routes.yaml"),
+    group_size: Annotated[int, typer.Option(min=1)] = 2,
+    active_budget: Annotated[int | None, typer.Option()] = None,
+    samples: Annotated[int, typer.Option(min=1)] = 8,
+    preserve_first: Annotated[int, typer.Option(min=0)] = 1,
+    preserve_last: Annotated[int, typer.Option(min=0)] = 1,
+    seed: Annotated[int, typer.Option()] = 17,
+) -> None:
+    protected = set(range(min(preserve_first, num_layers)))
+    protected.update(range(max(0, num_layers - preserve_last), num_layers))
+    if strategy == "single":
+        routes = single_layer_deletion_routes(num_layers, protected)
+    elif strategy == "adjacent":
+        routes = adjacent_group_deletion_routes(num_layers, group_size, protected)
+    elif strategy == "random":
+        if active_budget is None:
+            raise typer.BadParameter("--active-budget is required for random ablations")
+        routes = random_deletion_routes(
+            num_layers,
+            active_budget,
+            samples,
+            protected,
+            seed,
+        )
+    else:
+        raise typer.BadParameter("strategy must be one of: single, adjacent, random")
+    RouteLibrary(routes=routes).save(output)
+    typer.echo(f"Saved {len(routes)} ablation routes to {output}")
+
+
+@app.command("benchmark-routes")
+def benchmark_routes(
+    routes_file: Annotated[Path, typer.Option(exists=True)],
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/model.yaml"),
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("data/smoke_eval.jsonl"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/route_benchmarks.json"),
+) -> None:
+    settings = load_project_settings(config)
+    routed_model, tokenizer, device = load_model(settings.model)
+    library = RouteLibrary.load(routes_file)
+    library.validate_for_depth(routed_model.num_layers)
+    cases = load_cases(dataset)
+    reports = [
+        run_benchmark(
+            routed_model,
+            tokenizer,
+            device,
+            cases,
+            settings.benchmark,
+            route,
+        ).to_dict()
+        for route in library.routes
+    ]
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(reports, indent=2), encoding="utf-8")
+    typer.echo(f"Saved {len(reports)} route benchmarks to {output}")
 
 
 @app.command("pareto-filter")
