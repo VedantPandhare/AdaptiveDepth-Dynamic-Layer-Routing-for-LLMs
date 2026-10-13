@@ -18,6 +18,7 @@ probe-and-restart fallback rather than unsafe mid-generation layer activation.
 - JSONL task harness and exact-match baseline evaluation.
 - ShortGPT-inspired block-influence measurement.
 - Single-layer, adjacent-group, and random ablation route generation.
+- Full-model-to-route teacher KL measurement.
 - Constrained, deterministic candidate-route generation.
 - Multi-objective Pareto filtering for measured routes.
 - Offline unit tests using a toy causal transformer.

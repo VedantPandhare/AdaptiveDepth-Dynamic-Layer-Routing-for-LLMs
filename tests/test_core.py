@@ -12,6 +12,7 @@ from adaptivedepth.analysis.ablation import (
     random_deletion_routes,
     single_layer_deletion_routes,
 )
+from adaptivedepth.analysis.teacher_divergence import mean_teacher_kl
 from adaptivedepth.compiler.candidate_search import generate_candidate_routes
 from adaptivedepth.compiler.pareto import RouteMeasurement, pareto_frontier
 from adaptivedepth.config import BenchmarkSettings
@@ -190,3 +191,16 @@ def test_ablation_route_generators_preserve_constraints() -> None:
     for route in singles + groups + random_routes:
         assert protected.issubset(route.active_layers)
     assert all(len(route.active_layers) == 5 for route in random_routes)
+
+
+def test_teacher_divergence_is_zero_for_full_route() -> None:
+    routed = RoutedCausalLM(ToyCausalLM(depth=4), "model.layers")
+    full_route = RouteDefinition(route_id="full-copy", active_layers=[0, 1, 2, 3])
+    divergence = mean_teacher_kl(
+        routed,
+        ToyTokenizer(),
+        ["one", "two"],
+        torch.device("cpu"),
+        full_route,
+    )
+    assert divergence == pytest.approx(0.0, abs=1e-7)

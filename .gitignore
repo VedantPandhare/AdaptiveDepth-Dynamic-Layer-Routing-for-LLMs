@@ -11,6 +11,7 @@ venv/
 experiments/**/*.json
 experiments/**/*.jsonl
 experiments/**/*.csv
+experiments/**/*.yaml
 artifacts/
 models/
 node_modules/

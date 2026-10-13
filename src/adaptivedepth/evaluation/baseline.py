@@ -43,6 +43,7 @@ class BenchmarkReport:
     p95_total_ms: float
     median_ttft_ms: float
     median_decode_ms_per_token: float
+    peak_memory_mb: float | None
     results: list[CaseResult]
 
     def to_dict(self) -> dict[str, Any]:
@@ -154,6 +155,11 @@ def run_benchmark(
             )
 
     totals = [profile.total_ms for profile in all_profiles]
+    memory_values = [
+        profile.peak_memory_mb
+        for profile in all_profiles
+        if profile.peak_memory_mb is not None
+    ]
     return BenchmarkReport(
         route_id=route_id,
         active_layers=active_layers,
@@ -165,5 +171,6 @@ def run_benchmark(
         median_decode_ms_per_token=statistics.median(
             profile.decode_ms_per_token for profile in all_profiles
         ),
+        peak_memory_mb=statistics.median(memory_values) if memory_values else None,
         results=results,
     )

@@ -3,11 +3,15 @@
 The design memo defines eleven implementation phases. Progress is counted by
 working, tested capabilities—not by files created.
 
+Current implementation milestone: **approximately 20–25%**. This measures the
+software foundation only; it does not claim that real-model experiments have
+already been completed.
+
 | Phase | Capability | Status |
 |---:|---|---|
 | 1 | Reproducible baseline and latency harness | Implemented; real-model run pending checkpoint availability |
-| 2 | Block influence and layer-analysis foundation | Implemented |
-| 3 | Candidate route compiler and Pareto filtering | Implemented foundation; candidate benchmarking is next |
+| 2 | Block influence, ablation routes, route benchmarking, and teacher KL | Implemented; real measurements pending |
+| 3 | Candidate route compiler and Pareto filtering | Implemented foundation; real candidate benchmarking is next |
 | 4 | Static route evaluation and go/no-go gate | Not started |
 | 5 | Route-aware robustness training | Not started |
 | 6 | Route-regret dataset generation | Not started |

@@ -6,7 +6,6 @@ from typing import Annotated
 
 import typer
 
-from adaptivedepth.analysis.block_influence import BlockInfluenceAnalyzer
 from adaptivedepth.analysis.ablation import (
     adjacent_group_deletion_routes,
     random_deletion_routes,
@@ -15,8 +14,6 @@ from adaptivedepth.analysis.ablation import (
 from adaptivedepth.compiler.candidate_search import generate_candidate_routes
 from adaptivedepth.compiler.pareto import RouteMeasurement, pareto_frontier
 from adaptivedepth.config import load_compiler_settings, load_project_settings
-from adaptivedepth.evaluation.baseline import load_cases, run_benchmark
-from adaptivedepth.model.loading import load_model
 from adaptivedepth.routes import RouteLibrary
 
 app = typer.Typer(no_args_is_help=True, help="AdaptiveDepth experiment CLI")
@@ -26,6 +23,8 @@ app = typer.Typer(no_args_is_help=True, help="AdaptiveDepth experiment CLI")
 def inspect_model(
     config: Annotated[Path, typer.Option(exists=True)] = Path("configs/model.yaml"),
 ) -> None:
+    from adaptivedepth.model.loading import load_model
+
     settings = load_project_settings(config)
     routed_model, _tokenizer, device = load_model(settings.model)
     typer.echo(
@@ -47,6 +46,9 @@ def baseline(
     dataset: Annotated[Path, typer.Option(exists=True)] = Path("data/smoke_eval.jsonl"),
     output: Annotated[Path, typer.Option()] = Path("experiments/baseline.json"),
 ) -> None:
+    from adaptivedepth.evaluation.baseline import load_cases, run_benchmark
+    from adaptivedepth.model.loading import load_model
+
     settings = load_project_settings(config)
     routed_model, tokenizer, device = load_model(settings.model)
     report = run_benchmark(
@@ -76,6 +78,10 @@ def analyze_layers(
     dataset: Annotated[Path, typer.Option(exists=True)] = Path("data/smoke_eval.jsonl"),
     output: Annotated[Path, typer.Option()] = Path("experiments/block_influence.json"),
 ) -> None:
+    from adaptivedepth.analysis.block_influence import BlockInfluenceAnalyzer
+    from adaptivedepth.evaluation.baseline import load_cases
+    from adaptivedepth.model.loading import load_model
+
     settings = load_project_settings(config)
     routed_model, tokenizer, device = load_model(settings.model)
     prompts = [case.prompt for case in load_cases(dataset)]
@@ -160,24 +166,45 @@ def benchmark_routes(
     dataset: Annotated[Path, typer.Option(exists=True)] = Path("data/smoke_eval.jsonl"),
     output: Annotated[Path, typer.Option()] = Path("experiments/route_benchmarks.json"),
 ) -> None:
+    from adaptivedepth.analysis.teacher_divergence import mean_teacher_kl
+    from adaptivedepth.evaluation.baseline import load_cases, run_benchmark
+    from adaptivedepth.model.loading import load_model
+
     settings = load_project_settings(config)
     routed_model, tokenizer, device = load_model(settings.model)
     library = RouteLibrary.load(routes_file)
     library.validate_for_depth(routed_model.num_layers)
     cases = load_cases(dataset)
-    reports = [
-        run_benchmark(
+    reports = []
+    measurements = []
+    prompts = [case.prompt for case in cases]
+    for route in library.routes:
+        report = run_benchmark(
             routed_model,
             tokenizer,
             device,
             cases,
             settings.benchmark,
             route,
-        ).to_dict()
-        for route in library.routes
-    ]
+        )
+        teacher_divergence = mean_teacher_kl(
+            routed_model, tokenizer, prompts, device, route
+        )
+        reports.append(report.to_dict())
+        measurements.append(
+            {
+                "route_id": route.route_id,
+                "quality": report.accuracy,
+                "latency_ms": report.median_total_ms,
+                "teacher_divergence": teacher_divergence,
+                "peak_memory_mb": report.peak_memory_mb,
+            }
+        )
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(reports, indent=2), encoding="utf-8")
+    output.write_text(
+        json.dumps({"measurements": measurements, "reports": reports}, indent=2),
+        encoding="utf-8",
+    )
     typer.echo(f"Saved {len(reports)} route benchmarks to {output}")
 
 
@@ -187,7 +214,8 @@ def pareto_filter(
     output: Annotated[Path, typer.Option()] = Path("experiments/pareto_routes.json"),
 ) -> None:
     payload = json.loads(measurements_file.read_text(encoding="utf-8"))
-    measurements = [RouteMeasurement.model_validate(item) for item in payload]
+    values = payload["measurements"] if isinstance(payload, dict) else payload
+    measurements = [RouteMeasurement.model_validate(item) for item in values]
     frontier = pareto_frontier(measurements)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
