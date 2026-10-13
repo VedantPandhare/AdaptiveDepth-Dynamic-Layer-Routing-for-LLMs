@@ -1,0 +1,4 @@
+# Populated by `adaptivedepth compile-candidates` after layer influence is measured.
+# Routes are deliberately not hand-authored: the design memo requires them to be
+# compiled and validated from measurements.
+routes: []
