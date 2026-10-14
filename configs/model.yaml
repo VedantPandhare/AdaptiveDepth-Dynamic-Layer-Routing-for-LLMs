@@ -12,3 +12,4 @@ benchmark:
   warmup_runs: 1
   measured_runs: 3
   seed: 17
+  use_chat_template: true

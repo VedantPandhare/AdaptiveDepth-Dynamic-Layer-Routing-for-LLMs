@@ -7,10 +7,7 @@ import torch.nn.functional as functional
 
 from adaptivedepth.model.routed_model import RoutedCausalLM
 from adaptivedepth.routes import RouteDefinition
-
-
-def _move_batch(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
-    return {key: value.to(device) if hasattr(value, "to") else value for key, value in batch.items()}
+from adaptivedepth.runtime.generation import encode_prompt
 
 
 @torch.inference_mode()
@@ -20,6 +17,7 @@ def mean_teacher_kl(
     prompts: list[str],
     device: torch.device,
     route: RouteDefinition,
+    use_chat_template: bool = True,
 ) -> float:
     """Mean token-level KL(full || route) over calibration prompts."""
 
@@ -27,7 +25,7 @@ def mean_teacher_kl(
         raise ValueError("at least one prompt is required")
     divergences: list[float] = []
     for prompt in prompts:
-        encoded = _move_batch(tokenizer(prompt, return_tensors="pt"), device)
+        encoded = encode_prompt(tokenizer, prompt, device, use_chat_template)
         teacher_logits = routed_model(**encoded, use_cache=False).logits.float()
         with routed_model.use_route(route):
             route_logits = routed_model(**encoded, use_cache=False).logits.float()

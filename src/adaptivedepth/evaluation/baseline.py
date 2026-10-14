@@ -126,6 +126,7 @@ def run_benchmark(
                 cases[0].prompt,
                 device,
                 min(settings.max_new_tokens, 4),
+                settings.use_chat_template,
             )
 
         results: list[CaseResult] = []
@@ -138,6 +139,7 @@ def run_benchmark(
                     case.prompt,
                     device,
                     settings.max_new_tokens,
+                    settings.use_chat_template,
                 )
                 for _ in range(settings.measured_runs)
             ]

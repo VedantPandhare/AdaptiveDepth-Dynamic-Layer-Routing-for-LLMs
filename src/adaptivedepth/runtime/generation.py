@@ -16,6 +16,24 @@ def _move_batch(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
     return {key: value.to(device) if hasattr(value, "to") else value for key, value in batch.items()}
 
 
+def encode_prompt(
+    tokenizer: Any,
+    prompt: str,
+    device: torch.device,
+    use_chat_template: bool = True,
+) -> dict[str, Any]:
+    if use_chat_template and hasattr(tokenizer, "apply_chat_template"):
+        batch = tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt}],
+            add_generation_prompt=True,
+            return_tensors="pt",
+            return_dict=True,
+        )
+    else:
+        batch = tokenizer(prompt, return_tensors="pt")
+    return _move_batch(dict(batch), device)
+
+
 def _eos_ids(tokenizer: Any) -> set[int]:
     eos = getattr(tokenizer, "eos_token_id", None)
     if eos is None:
@@ -48,10 +66,11 @@ def profile_greedy_generation(
     prompt: str,
     device: torch.device,
     max_new_tokens: int,
+    use_chat_template: bool = True,
 ) -> GenerationProfile:
     """Profile deterministic generation while separating prefill/TTFT and decode."""
 
-    encoded = _move_batch(tokenizer(prompt, return_tensors="pt"), device)
+    encoded = encode_prompt(tokenizer, prompt, device, use_chat_template)
     input_ids = encoded["input_ids"]
     attention_mask = encoded.get("attention_mask", torch.ones_like(input_ids))
 

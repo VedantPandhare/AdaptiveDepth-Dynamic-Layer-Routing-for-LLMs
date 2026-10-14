@@ -7,6 +7,7 @@ import torch
 import torch.nn.functional as functional
 
 from adaptivedepth.model.routed_model import RoutedCausalLM
+from adaptivedepth.runtime.generation import encode_prompt
 
 
 def _hidden_tensor(value: Any) -> torch.Tensor:
@@ -64,14 +65,11 @@ class BlockInfluenceAnalyzer:
         tokenizer: Any,
         prompts: list[str],
         device: torch.device,
+        use_chat_template: bool = True,
     ) -> list[LayerInfluence]:
         with self:
             for prompt in prompts:
-                encoded = tokenizer(prompt, return_tensors="pt")
-                encoded = {
-                    key: value.to(device) if hasattr(value, "to") else value
-                    for key, value in encoded.items()
-                }
+                encoded = encode_prompt(tokenizer, prompt, device, use_chat_template)
                 self.routed_model(**encoded, use_cache=False)
         return [
             LayerInfluence(

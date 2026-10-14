@@ -25,6 +25,7 @@ class BenchmarkSettings(BaseModel):
     warmup_runs: int = Field(default=1, ge=0)
     measured_runs: int = Field(default=3, ge=1)
     seed: int = 17
+    use_chat_template: bool = True
 
 
 class ProjectSettings(BaseModel):
@@ -44,6 +45,16 @@ class CompilerSettings(BaseModel):
     seed: int = 17
 
 
+class EvaluationSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    max_quality_drop: float = Field(default=0.05, ge=0, le=1)
+    min_latency_reduction: float = Field(default=0.10, ge=0, lt=1)
+    max_teacher_divergence: float = Field(default=0.50, ge=0)
+    random_routes_per_budget: int = Field(default=2, ge=1)
+    require_candidate_advantage: bool = True
+
+
 def _load_yaml(path: str | Path) -> dict:
     with Path(path).open("r", encoding="utf-8") as handle:
         value = yaml.safe_load(handle)
@@ -56,3 +67,7 @@ def load_project_settings(path: str | Path) -> ProjectSettings:
 
 def load_compiler_settings(path: str | Path) -> CompilerSettings:
     return CompilerSettings.model_validate(_load_yaml(path))
+
+
+def load_evaluation_settings(path: str | Path) -> EvaluationSettings:
+    return EvaluationSettings.model_validate(_load_yaml(path))
