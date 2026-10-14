@@ -1,0 +1,30 @@
+{"id":"fact-001","category":"factual_qa","prompt":"Answer with only the answer. What is the capital of Japan?","reference":"Tokyo"}
+{"id":"fact-002","category":"factual_qa","prompt":"Answer with only the answer. What is the chemical symbol for gold?","reference":"Au"}
+{"id":"fact-003","category":"factual_qa","prompt":"Answer with only the answer. What is the largest ocean on Earth?","reference":"Pacific Ocean"}
+{"id":"fact-004","category":"factual_qa","prompt":"Answer with only the answer. Who wrote Hamlet?","reference":"William Shakespeare"}
+{"id":"fact-005","category":"factual_qa","prompt":"Answer with only the answer. Which planet is famous for its prominent ring system?","reference":"Saturn"}
+{"id":"fact-006","category":"factual_qa","prompt":"Answer with only the number. At sea level, water boils at how many degrees Celsius?","reference":"100"}
+{"id":"fact-007","category":"factual_qa","prompt":"Answer with only the answer. On which continent is Egypt located?","reference":"Africa"}
+{"id":"fact-008","category":"factual_qa","prompt":"Answer with only the answer. Which organ pumps blood through the human body?","reference":"heart"}
+{"id":"fact-009","category":"factual_qa","prompt":"Answer with only the number. What is the square root of 144?","reference":"12"}
+{"id":"fact-010","category":"factual_qa","prompt":"Answer with only the three-letter code. What is the ISO currency code of the United Kingdom pound?","reference":"GBP"}
+{"id":"math-001","category":"multiple_choice","prompt":"Answer with only the option letter. What is 17 + 28? A) 35 B) 45 C) 55 D) 65","reference":"B"}
+{"id":"math-002","category":"multiple_choice","prompt":"Answer with only the option letter. What is 12 multiplied by 9? A) 98 B) 102 C) 108 D) 118","reference":"C"}
+{"id":"math-003","category":"multiple_choice","prompt":"Answer with only the option letter. What is three quarters of 20? A) 5 B) 10 C) 15 D) 18","reference":"C"}
+{"id":"math-004","category":"multiple_choice","prompt":"Answer with only the option letter. A fair coin is tossed once. What is the probability of heads? A) 0 B) 1/4 C) 1/2 D) 1","reference":"C"}
+{"id":"math-005","category":"multiple_choice","prompt":"Answer with only the option letter. A meeting starts at 2:15 PM and lasts 45 minutes. When does it end? A) 2:45 PM B) 3:00 PM C) 3:15 PM D) 4:00 PM","reference":"B"}
+{"id":"math-006","category":"multiple_choice","prompt":"Answer with only the option letter. What is the area of a rectangle with length 8 and width 5? A) 13 B) 26 C) 40 D) 80","reference":"C"}
+{"id":"math-007","category":"multiple_choice","prompt":"Answer with only the option letter. What is the arithmetic mean of 4, 8, and 12? A) 6 B) 8 C) 10 D) 12","reference":"B"}
+{"id":"math-008","category":"multiple_choice","prompt":"Answer with only the option letter. Solve 3x = 21. A) 6 B) 7 C) 8 D) 9","reference":"B"}
+{"id":"math-009","category":"multiple_choice","prompt":"Answer with only the option letter. What is 101 in binary when converted to decimal? A) 4 B) 5 C) 6 D) 7","reference":"B"}
+{"id":"math-010","category":"multiple_choice","prompt":"Answer with only the option letter. Which number completes 3, 6, 12, 24, __? A) 30 B) 36 C) 42 D) 48","reference":"D"}
+{"id":"logic-001","category":"reasoning","prompt":"Answer with only the option letter. All robins are birds. All birds are animals. Therefore all robins are: A) animals B) fish C) plants D) minerals","reference":"A"}
+{"id":"logic-002","category":"reasoning","prompt":"Answer with only the option letter. No squares are circles. Shape X is a square. Which must be true? A) X is a circle B) X is not a circle C) X is both D) Nothing follows","reference":"B"}
+{"id":"logic-003","category":"reasoning","prompt":"Answer with only the option letter. Ana is taller than Ben, and Ben is taller than Cara. Who is tallest? A) Ana B) Ben C) Cara D) Cannot know","reference":"A"}
+{"id":"logic-004","category":"reasoning","prompt":"Answer with only the option letter. If the alarm is set, the light blinks. The alarm is set. What follows? A) The light blinks B) The light breaks C) The alarm is off D) Nothing","reference":"A"}
+{"id":"logic-005","category":"reasoning","prompt":"Answer with only the option letter. Book is to reading as fork is to: A) writing B) eating C) sleeping D) driving","reference":"B"}
+{"id":"logic-006","category":"reasoning","prompt":"Answer with only the option letter. Which item does not belong? A) apple B) banana C) carrot D) orange","reference":"C"}
+{"id":"logic-007","category":"reasoning","prompt":"Answer with only the option letter. If today is Monday, what day is three days later? A) Tuesday B) Wednesday C) Thursday D) Friday","reference":"C"}
+{"id":"logic-008","category":"reasoning","prompt":"Answer with only the option letter. A box contains only red and blue balls. A selected ball is not red. It must be: A) green B) blue C) yellow D) red","reference":"B"}
+{"id":"logic-009","category":"reasoning","prompt":"Answer with only the option letter. Some poets are teachers. All teachers are readers. What follows? A) Some poets are readers B) No poets read C) All poets teach D) No conclusion","reference":"A"}
+{"id":"logic-010","category":"reasoning","prompt":"Answer with only the option letter. Rearrange the letters LISTEN to form another English word. A) SILENT B) TINSELLED C) LITTLE D) STONE","reference":"A"}

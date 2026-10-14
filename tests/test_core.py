@@ -15,8 +15,11 @@ from adaptivedepth.analysis.ablation import (
 from adaptivedepth.analysis.teacher_divergence import mean_teacher_kl
 from adaptivedepth.compiler.candidate_search import generate_candidate_routes
 from adaptivedepth.compiler.pareto import RouteMeasurement, pareto_frontier
-from adaptivedepth.config import BenchmarkSettings
+from adaptivedepth.compiler.static_suite import build_static_route_suite
+from adaptivedepth.config import BenchmarkSettings, EvaluationSettings
 from adaptivedepth.evaluation.baseline import BenchmarkCase, run_benchmark
+from adaptivedepth.evaluation.experiment import run_static_experiment
+from adaptivedepth.evaluation.gate import evaluate_static_gate, gate_markdown
 from adaptivedepth.model.routed_model import RoutedCausalLM
 from adaptivedepth.routes import RouteDefinition, RouteLibrary
 from adaptivedepth.runtime.generation import profile_greedy_generation
@@ -41,8 +44,10 @@ class ToyCausalLM(nn.Module):
     def __init__(self, depth: int = 6) -> None:
         super().__init__()
         self.model = ToyBackbone(depth)
+        self.forward_calls = 0
 
     def forward(self, input_ids: torch.Tensor, **_kwargs):
+        self.forward_calls += 1
         hidden = input_ids.float().unsqueeze(-1).repeat(1, 1, 3)
         for layer in self.model.layers:
             hidden = layer(hidden)
@@ -204,3 +209,171 @@ def test_teacher_divergence_is_zero_for_full_route() -> None:
         full_route,
     )
     assert divergence == pytest.approx(0.0, abs=1e-7)
+
+
+def test_static_suite_contains_required_baselines() -> None:
+    influence = {index: float(index) for index in range(8)}
+    candidates = RouteLibrary(
+        routes=[RouteDefinition(route_id="candidate_b04_v00", active_layers=[0, 5, 6, 7])]
+    )
+    suite = build_static_route_suite(
+        candidates,
+        num_layers=8,
+        influence=influence,
+        budgets=[4, 6],
+        preserve_first=1,
+        preserve_last=1,
+        random_routes_per_budget=2,
+        seed=3,
+    )
+    sources = {route.source for route in suite.routes}
+    assert sources == {
+        "compiled",
+        "fixed_prefix_baseline",
+        "importance_static_baseline",
+        "random_baseline",
+    }
+    assert len(suite.routes) == 9
+
+
+def test_static_experiment_is_resumable(tmp_path) -> None:
+    dataset = tmp_path / "cases.jsonl"
+    dataset.write_text(
+        '{"id":"one","category":"multiple_choice","prompt":"x","reference":"A"}\n',
+        encoding="utf-8",
+    )
+    model = ToyCausalLM(depth=4)
+    routed = RoutedCausalLM(model, "model.layers")
+    routes = RouteLibrary(
+        routes=[RouteDefinition(route_id="route_a", active_layers=[0, 2, 3])]
+    )
+    settings = BenchmarkSettings(
+        max_new_tokens=2,
+        warmup_runs=0,
+        measured_runs=1,
+        use_chat_template=False,
+    )
+    output = tmp_path / "experiment.json"
+    first = run_static_experiment(
+        routed,
+        ToyTokenizer(),
+        torch.device("cpu"),
+        "toy",
+        dataset,
+        settings,
+        routes,
+        output,
+        workdir=tmp_path,
+    )
+    calls_after_first = model.forward_calls
+    second = run_static_experiment(
+        routed,
+        ToyTokenizer(),
+        torch.device("cpu"),
+        "toy",
+        dataset,
+        settings,
+        routes,
+        output,
+        workdir=tmp_path,
+    )
+    assert first["status"] == "completed"
+    assert second["status"] == "completed"
+    assert set(second["routes"]) == {"route_a"}
+    assert model.forward_calls == calls_after_first
+
+
+def test_static_experiment_rejects_changed_route_suite(tmp_path) -> None:
+    dataset = tmp_path / "cases.jsonl"
+    dataset.write_text(
+        '{"id":"one","category":"multiple_choice","prompt":"x","reference":"A"}\n',
+        encoding="utf-8",
+    )
+    routed = RoutedCausalLM(ToyCausalLM(depth=4), "model.layers")
+    settings = BenchmarkSettings(
+        max_new_tokens=1,
+        warmup_runs=0,
+        measured_runs=1,
+        use_chat_template=False,
+    )
+    output = tmp_path / "experiment.json"
+    original = RouteLibrary(
+        routes=[RouteDefinition(route_id="route_a", active_layers=[0, 2, 3])]
+    )
+    run_static_experiment(
+        routed,
+        ToyTokenizer(),
+        torch.device("cpu"),
+        "toy",
+        dataset,
+        settings,
+        original,
+        output,
+        workdir=tmp_path,
+    )
+    changed = RouteLibrary(
+        routes=[RouteDefinition(route_id="route_a", active_layers=[0, 1, 3])]
+    )
+    with pytest.raises(ValueError, match="route suite changed"):
+        run_static_experiment(
+            routed,
+            ToyTokenizer(),
+            torch.device("cpu"),
+            "toy",
+            dataset,
+            settings,
+            changed,
+            output,
+            workdir=tmp_path,
+        )
+
+
+def test_phase4_gate_proceeds_for_safe_candidate() -> None:
+    full = {
+        "route_id": "full",
+        "source": "full_model",
+        "active_layers": 8,
+        "quality": 1.0,
+        "quality_delta": 0.0,
+        "latency_ms": 100.0,
+        "latency_reduction": 0.0,
+        "speedup": 1.0,
+        "teacher_divergence": 0.0,
+        "peak_memory_mb": None,
+    }
+    baseline = {
+        **full,
+        "route_id": "fixed_prefix_b04",
+        "source": "fixed_prefix_baseline",
+        "active_layers": 4,
+        "quality": 0.80,
+        "quality_delta": -0.20,
+        "latency_ms": 60.0,
+        "latency_reduction": 0.40,
+        "speedup": 1.67,
+        "teacher_divergence": 0.2,
+    }
+    candidate = {
+        **full,
+        "route_id": "candidate_b04_v00",
+        "source": "influence_constrained_search",
+        "active_layers": 4,
+        "quality": 0.98,
+        "quality_delta": -0.02,
+        "latency_ms": 70.0,
+        "latency_reduction": 0.30,
+        "speedup": 1.43,
+        "teacher_divergence": 0.1,
+    }
+    experiment = {
+        "status": "completed",
+        "full_baseline": {"measurement": full},
+        "routes": {
+            "fixed_prefix_b04": {"measurement": baseline},
+            "candidate_b04_v00": {"measurement": candidate},
+        },
+    }
+    report = evaluate_static_gate(experiment, EvaluationSettings())
+    assert report["verdict"] == "proceed"
+    assert report["passing_candidate_ids"] == ["candidate_b04_v00"]
+    assert "Candidate assessment" in gate_markdown(report)

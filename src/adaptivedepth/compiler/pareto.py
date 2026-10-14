@@ -13,7 +13,7 @@ class RouteMeasurement(BaseModel):
     peak_memory_mb: float | None = Field(default=None, gt=0)
 
 
-def _dominates(left: RouteMeasurement, right: RouteMeasurement) -> bool:
+def dominates(left: RouteMeasurement, right: RouteMeasurement) -> bool:
     comparisons = [
         left.quality >= right.quality,
         left.latency_ms <= right.latency_ms,
@@ -37,7 +37,7 @@ def pareto_frontier(measurements: list[RouteMeasurement]) -> list[RouteMeasureme
         candidate
         for candidate in measurements
         if not any(
-            other.route_id != candidate.route_id and _dominates(other, candidate)
+            other.route_id != candidate.route_id and dominates(other, candidate)
             for other in measurements
         )
     ]

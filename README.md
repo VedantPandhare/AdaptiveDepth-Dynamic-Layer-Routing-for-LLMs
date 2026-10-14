@@ -10,6 +10,13 @@ The implementation follows the
 Version 1 uses a fixed route for an entire generation and will use
 probe-and-restart fallback rather than unsafe mid-generation layer activation.
 
+## Current milestone
+
+The software implementation is at approximately **30%** of the strengthened
+design: Phases 1-3 are implemented, and the complete Phase 4 static-route
+experiment is ready to run on a cloud GPU. This percentage does not imply that
+the real-checkpoint measurements have already been collected.
+
 ## Implemented foundation
 
 - Architecture-aware transformer layer discovery.
@@ -20,11 +27,16 @@ probe-and-restart fallback rather than unsafe mid-generation layer activation.
 - Single-layer, adjacent-group, and random ablation route generation.
 - Full-model-to-route teacher KL measurement.
 - Constrained, deterministic candidate-route generation.
+- Fixed-prefix, importance-ranked, and seeded-random static baselines.
 - Multi-objective Pareto filtering for measured routes.
+- Resumable static-route experiments with environment and dataset validation.
+- An automated Phase 4 go/no-go gate comparing compiled routes with baselines.
+- A 30-case English evaluation set and a Colab/Kaggle GPU notebook.
 - Offline unit tests using a toy causal transformer.
 
 See [implementation status](docs/IMPLEMENTATION_STATUS.md) for the phase-level
-roadmap.
+roadmap and the [Phase 4 runbook](docs/PHASE4_RUNBOOK.md) for the first cloud
+experiment.
 
 ## Setup
 
@@ -38,6 +50,27 @@ The default experiment configuration targets
 real-model commands; unit tests run fully offline.
 
 ## Commands
+
+Run the complete Phase 4 workflow on a T4 or P100 GPU:
+
+```powershell
+adaptivedepth run-phase4 `
+  --config configs/cloud_t4.yaml `
+  --dataset data/phase4_eval.jsonl `
+  --workspace experiments/phase4 `
+  --resume
+```
+
+This loads the model once, measures block influence, compiles candidate and
+control routes, benchmarks each route, and writes the gate decision. Progress
+is saved after the full baseline and after every route, so the same command can
+resume an interrupted run. The runner refuses to combine results from a
+different dataset, model, benchmark configuration, code revision, or GPU.
+
+For a hosted notebook, open
+[`notebooks/phase4_colab_kaggle.ipynb`](notebooks/phase4_colab_kaggle.ipynb).
+
+### Individual commands
 
 Inspect the model and discovered layer stack:
 
@@ -81,6 +114,6 @@ adaptivedepth benchmark-routes `
   --output experiments/single_layer_benchmarks.json
 ```
 
-Candidate routes are not considered valid until Phase 4 benchmarks their
+Candidate routes are not considered valid until the cloud run benchmarks their
 quality, latency, divergence, and memory against the full model and static
-baselines.
+baselines. The resulting decision is stored in `experiments/phase4/gate.md`.

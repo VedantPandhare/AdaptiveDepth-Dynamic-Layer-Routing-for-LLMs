@@ -36,12 +36,6 @@ def importance_static_routes(
     for budget in sorted(set(budgets)):
         if budget < len(protected) or budget >= num_layers:
             raise ValueError("importance budgets must preserve protected layers and skip a layer")
-        selected = set(protected)
-        selected.update(
-            index
-            for index in ranked
-            if index not in protected
-        )
         # Preserve rank order only for selection; execution order remains original.
         ranked_unprotected = [index for index in ranked if index not in protected]
         selected = protected | set(ranked_unprotected[: budget - len(protected)])

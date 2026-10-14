@@ -13,7 +13,11 @@ from adaptivedepth.analysis.ablation import (
 )
 from adaptivedepth.compiler.candidate_search import generate_candidate_routes
 from adaptivedepth.compiler.pareto import RouteMeasurement, pareto_frontier
-from adaptivedepth.config import load_compiler_settings, load_project_settings
+from adaptivedepth.config import (
+    load_compiler_settings,
+    load_evaluation_settings,
+    load_project_settings,
+)
 from adaptivedepth.routes import RouteLibrary
 
 app = typer.Typer(no_args_is_help=True, help="AdaptiveDepth experiment CLI")
@@ -85,7 +89,12 @@ def analyze_layers(
     settings = load_project_settings(config)
     routed_model, tokenizer, device = load_model(settings.model)
     prompts = [case.prompt for case in load_cases(dataset)]
-    scores = BlockInfluenceAnalyzer(routed_model).analyze_prompts(tokenizer, prompts, device)
+    scores = BlockInfluenceAnalyzer(routed_model).analyze_prompts(
+        tokenizer,
+        prompts,
+        device,
+        settings.benchmark.use_chat_template,
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(
@@ -188,7 +197,12 @@ def benchmark_routes(
             route,
         )
         teacher_divergence = mean_teacher_kl(
-            routed_model, tokenizer, prompts, device, route
+            routed_model,
+            tokenizer,
+            prompts,
+            device,
+            route,
+            settings.benchmark.use_chat_template,
         )
         reports.append(report.to_dict())
         measurements.append(
@@ -223,6 +237,183 @@ def pareto_filter(
         encoding="utf-8",
     )
     typer.echo(f"Saved {len(frontier)} Pareto routes to {output}")
+
+
+@app.command("build-static-suite")
+def build_static_suite(
+    influence_file: Annotated[Path, typer.Option(exists=True)],
+    candidates_file: Annotated[Path, typer.Option(exists=True)],
+    compiler_config: Annotated[Path, typer.Option(exists=True)] = Path("configs/compiler.yaml"),
+    evaluation_config: Annotated[Path, typer.Option(exists=True)] = Path("configs/evaluation.yaml"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/static_suite.yaml"),
+) -> None:
+    from adaptivedepth.compiler.static_suite import build_static_route_suite
+
+    payload = json.loads(influence_file.read_text(encoding="utf-8"))
+    influence = {
+        int(item["layer_index"]): float(item["influence"])
+        for item in payload["layers"]
+    }
+    compiler = load_compiler_settings(compiler_config)
+    evaluation = load_evaluation_settings(evaluation_config)
+    suite = build_static_route_suite(
+        candidates=RouteLibrary.load(candidates_file),
+        num_layers=len(influence),
+        influence=influence,
+        budgets=compiler.budgets,
+        preserve_first=compiler.preserve_first,
+        preserve_last=compiler.preserve_last,
+        random_routes_per_budget=evaluation.random_routes_per_budget,
+        seed=compiler.seed,
+    )
+    suite.save(output)
+    typer.echo(f"Saved {len(suite.routes)} candidate and baseline routes to {output}")
+
+
+@app.command("run-static-experiment")
+def run_static_experiment_command(
+    routes_file: Annotated[Path, typer.Option(exists=True)],
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/model.yaml"),
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("data/phase4_eval.jsonl"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase4/experiment.json"),
+    resume: Annotated[bool, typer.Option("--resume/--no-resume")] = True,
+) -> None:
+    from adaptivedepth.evaluation.experiment import run_static_experiment
+    from adaptivedepth.model.loading import load_model
+
+    settings = load_project_settings(config)
+    routed_model, tokenizer, device = load_model(settings.model)
+    run_static_experiment(
+        routed_model=routed_model,
+        tokenizer=tokenizer,
+        device=device,
+        model_id=settings.model.model_id,
+        dataset_path=dataset,
+        settings=settings.benchmark,
+        routes=RouteLibrary.load(routes_file),
+        output=output,
+        resume=resume,
+        workdir=Path.cwd(),
+        progress=typer.echo,
+    )
+    typer.echo(f"Saved resumable experiment to {output}")
+
+
+@app.command("evaluate-static-experiment")
+def evaluate_static_experiment_command(
+    experiment_file: Annotated[Path, typer.Option(exists=True)],
+    evaluation_config: Annotated[Path, typer.Option(exists=True)] = Path("configs/evaluation.yaml"),
+    output_json: Annotated[Path, typer.Option()] = Path("experiments/phase4/gate.json"),
+    output_markdown: Annotated[Path, typer.Option()] = Path("experiments/phase4/gate.md"),
+) -> None:
+    from adaptivedepth.evaluation.gate import evaluate_static_gate, save_gate_report
+
+    experiment = json.loads(experiment_file.read_text(encoding="utf-8"))
+    report = evaluate_static_gate(
+        experiment, load_evaluation_settings(evaluation_config)
+    )
+    save_gate_report(report, output_json, output_markdown)
+    typer.echo(f"Phase 4 verdict: {report['verdict']}")
+    typer.echo(f"Saved gate reports to {output_json} and {output_markdown}")
+
+
+@app.command("run-phase4")
+def run_phase4(
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/cloud_t4.yaml"),
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("data/phase4_eval.jsonl"),
+    compiler_config: Annotated[Path, typer.Option(exists=True)] = Path("configs/compiler.yaml"),
+    evaluation_config: Annotated[Path, typer.Option(exists=True)] = Path("configs/evaluation.yaml"),
+    workspace: Annotated[Path, typer.Option()] = Path("experiments/phase4"),
+    resume: Annotated[bool, typer.Option("--resume/--no-resume")] = True,
+) -> None:
+    """Run the complete cloud-ready Phase 4 pipeline with one model load."""
+
+    from adaptivedepth.analysis.block_influence import BlockInfluenceAnalyzer
+    from adaptivedepth.compiler.static_suite import build_static_route_suite
+    from adaptivedepth.evaluation.baseline import load_cases
+    from adaptivedepth.evaluation.experiment import run_static_experiment
+    from adaptivedepth.evaluation.gate import evaluate_static_gate, save_gate_report
+    from adaptivedepth.model.loading import load_model
+
+    workspace.mkdir(parents=True, exist_ok=True)
+    influence_path = workspace / "block_influence.json"
+    candidates_path = workspace / "candidate_routes.yaml"
+    suite_path = workspace / "static_suite.yaml"
+    experiment_path = workspace / "experiment.json"
+    gate_json_path = workspace / "gate.json"
+    gate_markdown_path = workspace / "gate.md"
+
+    project = load_project_settings(config)
+    compiler = load_compiler_settings(compiler_config)
+    evaluation = load_evaluation_settings(evaluation_config)
+    routed_model, tokenizer, device = load_model(project.model)
+    cases = load_cases(dataset)
+
+    if resume and influence_path.exists():
+        typer.echo("Reusing saved block-influence measurements")
+        influence_payload = json.loads(influence_path.read_text(encoding="utf-8"))
+    else:
+        typer.echo("Measuring block influence")
+        scores = BlockInfluenceAnalyzer(routed_model).analyze_prompts(
+            tokenizer,
+            [case.prompt for case in cases],
+            device,
+            project.benchmark.use_chat_template,
+        )
+        influence_payload = {
+            "model_id": project.model.model_id,
+            "layers": [score.to_dict() for score in scores],
+        }
+        influence_path.write_text(
+            json.dumps(influence_payload, indent=2), encoding="utf-8"
+        )
+
+    influence = {
+        int(item["layer_index"]): float(item["influence"])
+        for item in influence_payload["layers"]
+    }
+    candidates = RouteLibrary(
+        routes=generate_candidate_routes(
+            num_layers=routed_model.num_layers,
+            influence=influence,
+            budgets=compiler.budgets,
+            preserve_first=compiler.preserve_first,
+            preserve_last=compiler.preserve_last,
+            variants_per_budget=compiler.variants_per_budget,
+            seed=compiler.seed,
+        )
+    )
+    candidates.save(candidates_path)
+    suite = build_static_route_suite(
+        candidates=candidates,
+        num_layers=routed_model.num_layers,
+        influence=influence,
+        budgets=compiler.budgets,
+        preserve_first=compiler.preserve_first,
+        preserve_last=compiler.preserve_last,
+        random_routes_per_budget=evaluation.random_routes_per_budget,
+        seed=compiler.seed,
+    )
+    suite.save(suite_path)
+    typer.echo(f"Static suite contains {len(suite.routes)} routes")
+
+    experiment = run_static_experiment(
+        routed_model=routed_model,
+        tokenizer=tokenizer,
+        device=device,
+        model_id=project.model.model_id,
+        dataset_path=dataset,
+        settings=project.benchmark,
+        routes=suite,
+        output=experiment_path,
+        resume=resume,
+        workdir=Path.cwd(),
+        progress=typer.echo,
+    )
+    gate = evaluate_static_gate(experiment, evaluation)
+    save_gate_report(gate, gate_json_path, gate_markdown_path)
+    typer.echo(f"Phase 4 verdict: {gate['verdict']}")
+    typer.echo(f"All artifacts saved under {workspace}")
 
 
 if __name__ == "__main__":

@@ -12,6 +12,9 @@ experiments/**/*.json
 experiments/**/*.jsonl
 experiments/**/*.csv
 experiments/**/*.yaml
+experiments/**/*.md
+experiments/**/*.tmp
+phase4_artifacts.zip
 artifacts/
 models/
 node_modules/
