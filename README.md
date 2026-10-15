@@ -61,6 +61,20 @@ adaptivedepth run-phase4 `
   --resume
 ```
 
+Before committing to the complete run, execute the smoke configuration:
+
+```powershell
+adaptivedepth run-phase4 `
+  --config configs/cloud_smoke.yaml `
+  --dataset data/smoke_eval.jsonl `
+  --workspace experiments/phase4_smoke `
+  --resume
+```
+
+The smoke run uses six prompts, one timed repetition, and eight generated
+tokens. Keep its workspace separate because resumable timing artifacts must not
+be mixed with the full experiment.
+
 This loads the model once, measures block influence, compiles candidate and
 control routes, benchmarks each route, and writes the gate decision. Progress
 is saved after the full baseline and after every route, so the same command can
@@ -69,6 +83,10 @@ different dataset, model, benchmark configuration, code revision, or GPU.
 
 For a hosted notebook, open
 [`notebooks/phase4_colab_kaggle.ipynb`](notebooks/phase4_colab_kaggle.ipynb).
+
+The final roadmap also includes a required
+[interactive prompt demonstration](docs/DEMO_APPLICATION_SPEC.md) backed by the
+real router and fallback runtime.
 
 ### Individual commands
 

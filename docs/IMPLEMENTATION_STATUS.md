@@ -19,7 +19,7 @@ already been completed.
 | 8 | Rescue predictor | Not started |
 | 9 | Probe-and-restart fallback runtime | Not started |
 | 10 | End-to-end benchmark | Not started |
-| 11 | Dashboard | Not started |
+| 11 | Required interactive prompt demonstration | Specification locked; implementation follows the completed routing and fallback runtime |
 
 ## Current boundary
 
@@ -38,3 +38,9 @@ only experimentally complete after those artifacts exist and have been
 reviewed. A `proceed` verdict advances the project to route-aware robustness
 training; `revise_routes` means the compiler or budgets must be adjusted before
 training a router.
+
+The final project includes a required interactive application where a user
+enters a prompt and sees the generated answer, selected route, active/skipped
+layers, predicted route risk, latency savings, and any fallback event. Its
+acceptance criteria are defined in
+[`DEMO_APPLICATION_SPEC.md`](DEMO_APPLICATION_SPEC.md).

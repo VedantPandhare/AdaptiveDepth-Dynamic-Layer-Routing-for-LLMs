@@ -1795,9 +1795,12 @@ This practical simplicity is central to the project identity.
 
 ---
 
-# 55. Dashboard as a Technical Component
+# 55. Interactive Demonstration as a Technical Component
 
-The dashboard should not merely be decorative.
+The interactive application is a required deliverable, not merely a decorative
+dashboard. Its primary interaction begins with a user entering a new prompt;
+the response and every displayed routing value must come from the real
+AdaptiveDepth runtime.
 
 It should expose the runtime decision process.
 
@@ -2067,8 +2070,9 @@ adaptivedepth/
 - p95 latency,
 - fallback cost.
 
-## Phase 11 — Dashboard
+## Phase 11 — Required Interactive Prompt Demonstration
 
+- prompt input and generated answer,
 - execution route,
 - route reasoning,
 - fallback events,

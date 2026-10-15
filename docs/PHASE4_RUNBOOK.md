@@ -15,6 +15,21 @@ The hosted workflow is in
 It installs the package, confirms that CUDA is visible, runs the experiment,
 prints the gate report, and archives the artifacts for download.
 
+The notebook starts in smoke mode. This uses six prompts, one measured run, and
+eight generated tokens to detect model-loading, CUDA, route-execution, and
+artifact-writing failures quickly. After it succeeds, set `RUN_FULL = True`
+and rerun the experiment cells for the complete evaluation.
+
+Command-line smoke run:
+
+```bash
+adaptivedepth run-phase4 \
+  --config configs/cloud_smoke.yaml \
+  --dataset data/smoke_eval.jsonl \
+  --workspace experiments/phase4_smoke \
+  --resume
+```
+
 From an existing checkout, run:
 
 ```bash
