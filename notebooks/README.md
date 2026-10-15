@@ -19,3 +19,7 @@ The Phase 4 command is resumable. Keep the `experiments/phase4` directory when
 reconnecting to the same GPU/software environment. It intentionally rejects a
 resume on different hardware because those latency measurements are not
 comparable.
+
+Experiment schema version 2 uses fixed-length generation for latency
+comparison while preserving EOS-truncated answer text. Delete or separately
+archive any schema version 1 smoke workspace instead of resuming it.

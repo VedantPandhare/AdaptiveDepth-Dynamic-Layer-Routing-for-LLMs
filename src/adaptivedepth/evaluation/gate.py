@@ -99,6 +99,9 @@ def evaluate_static_gate(
         "reason": reason,
         "constraints": settings.model_dump(mode="json"),
         "full_baseline": full["measurement"],
+        "latency_basis": full["measurement"].get(
+            "latency_basis", "legacy_variable_generation_length"
+        ),
         "pareto_route_ids": pareto_ids,
         "passing_candidate_ids": [item["route_id"] for item in passing],
         "candidates": assessed_candidates,
@@ -125,6 +128,7 @@ def gate_markdown(report: dict[str, Any]) -> str:
             f"- Maximum quality drop: {constraints['max_quality_drop']:.3f}",
             f"- Minimum latency reduction: {constraints['min_latency_reduction']:.1%}",
             f"- Maximum teacher divergence: {constraints['max_teacher_divergence']:.3f}",
+            f"- Latency basis: `{report['latency_basis']}`",
             "",
             "## Candidate assessment",
             "",

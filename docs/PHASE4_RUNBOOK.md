@@ -31,12 +31,20 @@ timed repetition are intentionally insufficient for quality or latency
 decisions; smoke success means only that the pipeline completed and produced
 valid artifacts.
 
+Latency is measured with a fixed generation length for every route. If a model
+emits EOS early, its answer is truncated normally, but profiling continues to
+the configured token count. This prevents incorrect routes that fail to emit
+EOS from appearing slower merely because they generated more tokens. Phase 4
+experiment schema version 2 enforces this methodology and will reject older
+variable-length artifacts during resume.
+
 Command-line smoke run:
 
 ```bash
 adaptivedepth run-phase4 \
   --config configs/cloud_smoke.yaml \
   --dataset data/smoke_eval.jsonl \
+  --compiler-config configs/compiler_conservative.yaml \
   --workspace experiments/phase4_smoke \
   --resume
 ```
@@ -48,7 +56,7 @@ pip install -e .
 adaptivedepth run-phase4 \
   --config configs/cloud_t4.yaml \
   --dataset data/phase4_eval.jsonl \
-  --compiler-config configs/compiler.yaml \
+  --compiler-config configs/compiler_conservative.yaml \
   --evaluation-config configs/evaluation.yaml \
   --workspace experiments/phase4 \
   --resume
@@ -66,6 +74,12 @@ The workspace contains:
   memory, raw measurements, environment metadata, and completion state.
 - `gate.json` and `gate.md`: threshold checks, Pareto routes, control
   comparisons, and the final verdict.
+
+The current cloud run uses `compiler_conservative.yaml` with 20-, 21-, 22-,
+and 23-layer budgets. The first smoke run showed that the original 12-20-layer
+search was too aggressive for the untrained checkpoint: all 20-layer compiled
+routes still had zero smoke accuracy and teacher KL above 1.8. The aggressive
+configuration remains available for later route-aware robustness experiments.
 
 The experiment file is written atomically after every completed route. If the
 runtime disconnects, reconnect to the same GPU type, restore the workspace,

@@ -26,6 +26,7 @@ class BenchmarkSettings(BaseModel):
     measured_runs: int = Field(default=3, ge=1)
     seed: int = 17
     use_chat_template: bool = True
+    fixed_generation_length: bool = True
 
 
 class ProjectSettings(BaseModel):

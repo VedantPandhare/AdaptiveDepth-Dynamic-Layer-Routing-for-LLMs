@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from adaptivedepth.config import load_project_settings
+from adaptivedepth.config import load_compiler_settings, load_project_settings
 from adaptivedepth.evaluation.baseline import load_cases
 
 
@@ -26,6 +26,7 @@ def test_phase4_dataset_and_notebook_are_valid() -> None:
     assert "RUN_FULL = False" in notebook_source
     assert "configs/cloud_smoke.yaml" in notebook_source
     assert "data/smoke_eval.jsonl" in notebook_source
+    assert "configs/compiler_conservative.yaml" in notebook_source
     assert "read_secret('GITHUB_TOKEN')" in notebook_source
     assert "GIT_CONFIG_VALUE_0" in notebook_source
     assert "x-access-token" in notebook_source
@@ -38,3 +39,5 @@ def test_cloud_smoke_configuration_is_intentionally_small() -> None:
     assert settings.benchmark.max_new_tokens == 8
     assert settings.benchmark.warmup_runs == 1
     assert settings.benchmark.measured_runs == 1
+    compiler = load_compiler_settings("configs/compiler_conservative.yaml")
+    assert compiler.budgets == [20, 21, 22, 23]

@@ -48,6 +48,7 @@ class GenerationProfile:
     text: str
     input_tokens: int
     output_tokens: int
+    profiled_tokens: int
     ttft_ms: float
     decode_ms: float
     total_ms: float
@@ -67,8 +68,14 @@ def profile_greedy_generation(
     device: torch.device,
     max_new_tokens: int,
     use_chat_template: bool = True,
+    fixed_generation_length: bool = False,
 ) -> GenerationProfile:
-    """Profile deterministic generation while separating prefill/TTFT and decode."""
+    """Profile greedy generation while separating prefill/TTFT and decode.
+
+    When ``fixed_generation_length`` is enabled, generation continues after the
+    first EOS solely to measure an equal number of decode steps for every route.
+    Returned text and ``output_tokens`` remain truncated at that first EOS.
+    """
 
     encoded = encode_prompt(tokenizer, prompt, device, use_chat_template)
     input_ids = encoded["input_ids"]
@@ -85,8 +92,12 @@ def profile_greedy_generation(
 
     generated = [next_token]
     stop_ids = _eos_ids(tokenizer)
+    response_length = 1
+    reached_eos = int(next_token.item()) in stop_ids
     decode_started = perf_counter()
-    while len(generated) < max_new_tokens and int(next_token.item()) not in stop_ids:
+    while len(generated) < max_new_tokens and (
+        fixed_generation_length or not reached_eos
+    ):
         attention_mask = torch.cat(
             [attention_mask, torch.ones_like(next_token, device=device)], dim=-1
         )
@@ -98,22 +109,27 @@ def profile_greedy_generation(
         )
         next_token = outputs.logits[:, -1, :].argmax(dim=-1, keepdim=True)
         generated.append(next_token)
+        if not reached_eos:
+            response_length = len(generated)
+            reached_eos = int(next_token.item()) in stop_ids
     _synchronize(device)
     decode_ms = (perf_counter() - decode_started) * 1000
 
     generated_ids = torch.cat(generated, dim=-1)
-    output_tokens = generated_ids.shape[-1]
+    response_ids = generated_ids[:, :response_length]
+    profiled_tokens = generated_ids.shape[-1]
     total_ms = ttft_ms + decode_ms
-    decode_steps = max(output_tokens - 1, 0)
+    decode_steps = max(profiled_tokens - 1, 0)
     return GenerationProfile(
-        text=tokenizer.decode(generated_ids[0], skip_special_tokens=True).strip(),
+        text=tokenizer.decode(response_ids[0], skip_special_tokens=True).strip(),
         input_tokens=input_ids.shape[-1],
-        output_tokens=output_tokens,
+        output_tokens=response_length,
+        profiled_tokens=profiled_tokens,
         ttft_ms=ttft_ms,
         decode_ms=decode_ms,
         total_ms=total_ms,
         decode_ms_per_token=decode_ms / decode_steps if decode_steps else 0.0,
-        tokens_per_second=(output_tokens / total_ms * 1000) if total_ms else 0.0,
+        tokens_per_second=(profiled_tokens / total_ms * 1000) if total_ms else 0.0,
         peak_memory_mb=(
             torch.cuda.max_memory_allocated(device) / (1024**2)
             if device.type == "cuda"

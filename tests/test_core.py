@@ -170,6 +170,7 @@ def test_generation_profiler_and_baseline_harness() -> None:
     assert profile.text == "A"
     assert profile.input_tokens == 3
     assert profile.output_tokens == 3
+    assert profile.profiled_tokens == 3
     assert profile.total_ms >= profile.ttft_ms
 
     report = run_benchmark(
@@ -182,6 +183,31 @@ def test_generation_profiler_and_baseline_harness() -> None:
     assert report.route_id == "full"
     assert report.accuracy == 1.0
     assert report.active_layers == 4
+
+
+def test_fixed_generation_length_profiles_past_eos_but_truncates_answer() -> None:
+    class ImmediateEosTokenizer(ToyTokenizer):
+        eos_token_id = 0
+
+        def decode(self, token_ids, skip_special_tokens: bool = True) -> str:
+            assert skip_special_tokens
+            assert len(token_ids) == 1
+            return ""
+
+    model = ToyCausalLM(depth=2)
+    routed = RoutedCausalLM(model, "model.layers")
+    profile = profile_greedy_generation(
+        routed,
+        ImmediateEosTokenizer(),
+        "prompt",
+        torch.device("cpu"),
+        max_new_tokens=4,
+        fixed_generation_length=True,
+    )
+    assert profile.text == ""
+    assert profile.output_tokens == 1
+    assert profile.profiled_tokens == 4
+    assert model.forward_calls == 4
 
 
 def test_ablation_route_generators_preserve_constraints() -> None:

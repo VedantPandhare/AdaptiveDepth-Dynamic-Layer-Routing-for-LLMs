@@ -57,6 +57,7 @@ Run the complete Phase 4 workflow on a T4 or P100 GPU:
 adaptivedepth run-phase4 `
   --config configs/cloud_t4.yaml `
   --dataset data/phase4_eval.jsonl `
+  --compiler-config configs/compiler_conservative.yaml `
   --workspace experiments/phase4 `
   --resume
 ```
@@ -67,6 +68,7 @@ Before committing to the complete run, execute the smoke configuration:
 adaptivedepth run-phase4 `
   --config configs/cloud_smoke.yaml `
   --dataset data/smoke_eval.jsonl `
+  --compiler-config configs/compiler_conservative.yaml `
   --workspace experiments/phase4_smoke `
   --resume
 ```
@@ -75,6 +77,9 @@ The smoke run uses six prompts, one timed repetition, and eight generated
 tokens. Keep its workspace separate because resumable timing artifacts must not
 be mixed with the full experiment. Its gate verdict is diagnostic only and
 must not be treated as a quality or latency conclusion.
+
+All routes execute the same configured number of profiled tokens for fair
+latency comparison. Answer text still stops at the first EOS token.
 
 This loads the model once, measures block influence, compiles candidate and
 control routes, benchmarks each route, and writes the gate decision. Progress

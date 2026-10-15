@@ -16,7 +16,7 @@ from adaptivedepth.routes import RouteDefinition, RouteLibrary
 from adaptivedepth.runtime.environment import capture_environment
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 ProgressCallback = Callable[[str], None]
 
 
@@ -107,6 +107,7 @@ class ExperimentStore:
                 "quality": report["accuracy"],
                 "quality_delta": 0.0,
                 "latency_ms": report["median_total_ms"],
+                "latency_basis": "fixed_generation_length",
                 "latency_reduction": 0.0,
                 "speedup": 1.0,
                 "teacher_divergence": 0.0,
@@ -137,6 +138,7 @@ class ExperimentStore:
                 "quality": report["accuracy"],
                 "quality_delta": report["accuracy"] - full_report["accuracy"],
                 "latency_ms": route_latency,
+                "latency_basis": "fixed_generation_length",
                 "latency_reduction": 1.0 - (route_latency / full_latency),
                 "speedup": full_latency / route_latency,
                 "teacher_divergence": teacher_divergence,

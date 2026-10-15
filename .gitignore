@@ -16,6 +16,8 @@ experiments/**/*.md
 experiments/**/*.tmp
 phase4_artifacts.zip
 phase4_smoke_artifacts.zip
+/phase4_smoke/
+/phase4/
 artifacts/
 models/
 node_modules/
