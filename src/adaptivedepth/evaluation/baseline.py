@@ -30,6 +30,7 @@ class CaseResult:
     reference: str
     prediction: str
     exact_match: bool
+    answer_match: bool
     profile: dict[str, Any]
 
 
@@ -44,6 +45,7 @@ class BenchmarkReport:
     median_ttft_ms: float
     median_decode_ms_per_token: float
     peak_memory_mb: float | None
+    scoring_method: str
     results: list[CaseResult]
 
     def to_dict(self) -> dict[str, Any]:
@@ -85,12 +87,35 @@ def normalize_answer(text: str) -> str:
     return " ".join(text.split())
 
 
-def _is_exact_match(prediction: str, reference: str) -> bool:
+def is_exact_match(prediction: str, reference: str) -> bool:
     normalized_prediction = normalize_answer(prediction)
     normalized_reference = normalize_answer(reference)
-    if len(normalized_reference) == 1:
-        return normalized_prediction.split(" ", 1)[0] == normalized_reference
     return normalized_prediction == normalized_reference
+
+
+def is_answer_match(prediction: str, reference: str, category: str) -> bool:
+    """Score short benchmark answers without penalizing harmless formatting."""
+
+    if category in {"multiple_choice", "reasoning"} and re.fullmatch(
+        r"[A-Da-d]", reference.strip()
+    ):
+        option = re.match(
+            r"^\s*(?:(?:answer|option)\s*(?:is\s*)?[:\-]?\s*)?"
+            r"([A-Da-d])(?=\s*[\)\].:\-]|\s|$)",
+            prediction,
+            flags=re.IGNORECASE,
+        )
+        return option is not None and option.group(1).upper() == reference.upper()
+
+    normalized_prediction = normalize_answer(prediction)
+    normalized_reference = normalize_answer(reference)
+    if not normalized_reference:
+        return normalized_prediction == normalized_reference
+    if normalized_prediction == normalized_reference:
+        return True
+    if category == "factual_qa":
+        return f" {normalized_reference} " in f" {normalized_prediction} "
+    return False
 
 
 def _percentile_95(values: list[float]) -> float:
@@ -153,7 +178,10 @@ def run_benchmark(
                     category=case.category,
                     reference=case.reference,
                     prediction=profile.text,
-                    exact_match=_is_exact_match(profile.text, case.reference),
+                    exact_match=is_exact_match(profile.text, case.reference),
+                    answer_match=is_answer_match(
+                        profile.text, case.reference, case.category
+                    ),
                     profile=profile.to_dict(),
                 )
             )
@@ -168,7 +196,7 @@ def run_benchmark(
         route_id=route_id,
         active_layers=active_layers,
         total_layers=routed_model.num_layers,
-        accuracy=sum(result.exact_match for result in results) / len(results),
+        accuracy=sum(result.answer_match for result in results) / len(results),
         median_total_ms=statistics.median(totals),
         p95_total_ms=_percentile_95(totals),
         median_ttft_ms=statistics.median(profile.ttft_ms for profile in all_profiles),
@@ -176,5 +204,6 @@ def run_benchmark(
             profile.decode_ms_per_token for profile in all_profiles
         ),
         peak_memory_mb=statistics.median(memory_values) if memory_values else None,
+        scoring_method="answer_match_v2",
         results=results,
     )

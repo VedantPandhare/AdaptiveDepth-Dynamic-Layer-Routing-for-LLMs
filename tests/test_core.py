@@ -17,9 +17,14 @@ from adaptivedepth.compiler.candidate_search import generate_candidate_routes
 from adaptivedepth.compiler.pareto import RouteMeasurement, pareto_frontier
 from adaptivedepth.compiler.static_suite import build_static_route_suite
 from adaptivedepth.config import BenchmarkSettings, EvaluationSettings
-from adaptivedepth.evaluation.baseline import BenchmarkCase, run_benchmark
+from adaptivedepth.evaluation.baseline import (
+    BenchmarkCase,
+    is_answer_match,
+    run_benchmark,
+)
 from adaptivedepth.evaluation.experiment import run_static_experiment
 from adaptivedepth.evaluation.gate import evaluate_static_gate, gate_markdown
+from adaptivedepth.evaluation.rescore import rescore_experiment
 from adaptivedepth.model.routed_model import RoutedCausalLM
 from adaptivedepth.routes import RouteDefinition, RouteLibrary
 from adaptivedepth.runtime.generation import profile_greedy_generation
@@ -183,6 +188,48 @@ def test_generation_profiler_and_baseline_harness() -> None:
     assert report.route_id == "full"
     assert report.accuracy == 1.0
     assert report.active_layers == 4
+
+
+def test_answer_match_handles_options_and_short_factual_formatting() -> None:
+    assert is_answer_match("A) animals", "A", "reasoning")
+    assert is_answer_match("The largest ocean is the Pacific Ocean.", "Pacific Ocean", "factual_qa")
+    assert is_answer_match("100 Celsius", "100", "factual_qa")
+    assert not is_answer_match("Jupiter", "Saturn", "factual_qa")
+    assert not is_answer_match("C) 8", "B", "multiple_choice")
+
+
+def test_saved_experiment_can_be_rescored_without_inference() -> None:
+    def report(prediction: str) -> dict:
+        return {
+            "accuracy": 0.0,
+            "results": [
+                {
+                    "case_id": "logic-1",
+                    "category": "reasoning",
+                    "reference": "A",
+                    "prediction": prediction,
+                    "exact_match": False,
+                    "profile": {},
+                }
+            ],
+        }
+
+    experiment = {
+        "full_baseline": {
+            "report": report("A) animals"),
+            "measurement": {"quality": 0.0, "quality_delta": 0.0},
+        },
+        "routes": {
+            "route": {
+                "report": report("B) fish"),
+                "measurement": {"quality": 0.0, "quality_delta": 0.0},
+            }
+        },
+    }
+    rescored = rescore_experiment(experiment)
+    assert rescored["full_baseline"]["report"]["accuracy"] == 1.0
+    assert rescored["routes"]["route"]["report"]["accuracy"] == 0.0
+    assert rescored["routes"]["route"]["measurement"]["quality_delta"] == -1.0
 
 
 def test_fixed_generation_length_profiles_past_eos_but_truncates_answer() -> None:

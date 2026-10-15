@@ -38,6 +38,9 @@ See [implementation status](docs/IMPLEMENTATION_STATUS.md) for the phase-level
 roadmap and the [Phase 4 runbook](docs/PHASE4_RUNBOOK.md) for the first cloud
 experiment.
 
+The first T4 experiment and its `revise_routes` decision are summarized in the
+[Phase 4 results](docs/PHASE4_RESULTS.md).
+
 ## Setup
 
 ```powershell
@@ -141,3 +144,11 @@ adaptivedepth benchmark-routes `
 Candidate routes are not considered valid until the cloud run benchmarks their
 quality, latency, divergence, and memory against the full model and static
 baselines. The resulting decision is stored in `experiments/phase4/gate.md`.
+
+Saved predictions can be rescored after a scoring correction without rerunning
+GPU inference:
+
+```powershell
+adaptivedepth rescore-static-experiment `
+  --experiment-file experiments/phase4/experiment.json
+```

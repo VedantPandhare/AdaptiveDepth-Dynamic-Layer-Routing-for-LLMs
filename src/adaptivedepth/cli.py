@@ -317,6 +317,33 @@ def evaluate_static_experiment_command(
     typer.echo(f"Saved gate reports to {output_json} and {output_markdown}")
 
 
+@app.command("rescore-static-experiment")
+def rescore_static_experiment_command(
+    experiment_file: Annotated[Path, typer.Option(exists=True)],
+    evaluation_config: Annotated[Path, typer.Option(exists=True)] = Path("configs/evaluation.yaml"),
+    output_experiment: Annotated[Path, typer.Option()] = Path("experiments/phase4/experiment_rescored.json"),
+    output_json: Annotated[Path, typer.Option()] = Path("experiments/phase4/gate_rescored.json"),
+    output_markdown: Annotated[Path, typer.Option()] = Path("experiments/phase4/gate_rescored.md"),
+) -> None:
+    """Rescore saved predictions and rebuild the gate without GPU inference."""
+
+    from adaptivedepth.evaluation.gate import evaluate_static_gate, save_gate_report
+    from adaptivedepth.evaluation.rescore import rescore_experiment
+
+    experiment = rescore_experiment(
+        json.loads(experiment_file.read_text(encoding="utf-8"))
+    )
+    output_experiment.parent.mkdir(parents=True, exist_ok=True)
+    output_experiment.write_text(json.dumps(experiment, indent=2), encoding="utf-8")
+    report = evaluate_static_gate(
+        experiment, load_evaluation_settings(evaluation_config)
+    )
+    save_gate_report(report, output_json, output_markdown)
+    typer.echo(f"Rescored Phase 4 verdict: {report['verdict']}")
+    typer.echo(f"Saved rescored experiment to {output_experiment}")
+    typer.echo(f"Saved rescored gate reports to {output_json} and {output_markdown}")
+
+
 @app.command("run-phase4")
 def run_phase4(
     config: Annotated[Path, typer.Option(exists=True)] = Path("configs/cloud_t4.yaml"),
