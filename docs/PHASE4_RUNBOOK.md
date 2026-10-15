@@ -15,6 +15,12 @@ The hosted workflow is in
 It installs the package, confirms that CUDA is visible, runs the experiment,
 prints the gate report, and archives the artifacts for download.
 
+For a private GitHub repository, add a fine-grained, read-only repository token
+to the notebook's Secrets panel under the name `GITHUB_TOKEN` and enable access
+for the notebook. The clone cell passes the credential through Git's process
+environment; it does not place the token in the notebook, command arguments, or
+repository remote URL.
+
 The notebook starts in smoke mode. This uses six prompts, one measured run, and
 eight generated tokens to detect model-loading, CUDA, route-execution, and
 artifact-writing failures quickly. After it succeeds, set `RUN_FULL = True`

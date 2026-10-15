@@ -26,6 +26,9 @@ def test_phase4_dataset_and_notebook_are_valid() -> None:
     assert "RUN_FULL = False" in notebook_source
     assert "configs/cloud_smoke.yaml" in notebook_source
     assert "data/smoke_eval.jsonl" in notebook_source
+    assert "read_secret('GITHUB_TOKEN')" in notebook_source
+    assert "GIT_CONFIG_VALUE_0" in notebook_source
+    assert "x-access-token" in notebook_source
 
 
 def test_cloud_smoke_configuration_is_intentionally_small() -> None:
