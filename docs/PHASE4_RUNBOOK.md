@@ -20,6 +20,11 @@ eight generated tokens to detect model-loading, CUDA, route-execution, and
 artifact-writing failures quickly. After it succeeds, set `RUN_FULL = True`
 and rerun the experiment cells for the complete evaluation.
 
+Do not use the smoke-run gate verdict as project evidence. Six prompts and one
+timed repetition are intentionally insufficient for quality or latency
+decisions; smoke success means only that the pipeline completed and produced
+valid artifacts.
+
 Command-line smoke run:
 
 ```bash

@@ -73,7 +73,8 @@ adaptivedepth run-phase4 `
 
 The smoke run uses six prompts, one timed repetition, and eight generated
 tokens. Keep its workspace separate because resumable timing artifacts must not
-be mixed with the full experiment.
+be mixed with the full experiment. Its gate verdict is diagnostic only and
+must not be treated as a quality or latency conclusion.
 
 This loads the model once, measures block influence, compiles candidate and
 control routes, benchmarks each route, and writes the gate decision. Progress
