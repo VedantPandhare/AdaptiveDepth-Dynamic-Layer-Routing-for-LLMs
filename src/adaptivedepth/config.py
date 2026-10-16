@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ModelSettings(BaseModel):
@@ -56,6 +56,44 @@ class EvaluationSettings(BaseModel):
     require_candidate_advantage: bool = True
 
 
+class TrainingSettings(BaseModel):
+    """Resource-conscious settings for route-aware teacher/student training."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    seed: int = 17
+    max_seq_length: int = Field(default=128, ge=16, le=2048)
+    batch_size: int = Field(default=1, ge=1)
+    gradient_accumulation_steps: int = Field(default=4, ge=1)
+    max_steps: int = Field(default=500, ge=1)
+    learning_rate: float = Field(default=2e-5, gt=0)
+    weight_decay: float = Field(default=0.01, ge=0)
+    warmup_steps: int = Field(default=25, ge=0)
+    gradient_clip_norm: float = Field(default=1.0, gt=0)
+    language_model_weight: float = Field(default=0.3, ge=0)
+    distillation_weight: float = Field(default=0.7, ge=0)
+    distillation_temperature: float = Field(default=2.0, gt=0)
+    full_route_probability: float = Field(default=0.2, ge=0, le=1)
+    checkpoint_every: int = Field(default=50, ge=1)
+    log_every: int = Field(default=5, ge=1)
+    gradient_checkpointing: bool = True
+
+    @model_validator(mode="after")
+    def validate_objective(self) -> "TrainingSettings":
+        if self.language_model_weight + self.distillation_weight <= 0:
+            raise ValueError("at least one training loss weight must be positive")
+        if self.warmup_steps >= self.max_steps:
+            raise ValueError("warmup_steps must be smaller than max_steps")
+        return self
+
+
+class Phase5Settings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: ModelSettings = Field(default_factory=ModelSettings)
+    training: TrainingSettings = Field(default_factory=TrainingSettings)
+
+
 def _load_yaml(path: str | Path) -> dict:
     with Path(path).open("r", encoding="utf-8") as handle:
         value = yaml.safe_load(handle)
@@ -72,3 +110,7 @@ def load_compiler_settings(path: str | Path) -> CompilerSettings:
 
 def load_evaluation_settings(path: str | Path) -> EvaluationSettings:
     return EvaluationSettings.model_validate(_load_yaml(path))
+
+
+def load_phase5_settings(path: str | Path) -> Phase5Settings:
+    return Phase5Settings.model_validate(_load_yaml(path))

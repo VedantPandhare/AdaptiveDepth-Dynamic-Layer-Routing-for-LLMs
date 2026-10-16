@@ -45,3 +45,41 @@ def load_model(settings: ModelSettings) -> tuple[RoutedCausalLM, object, torch.d
     if getattr(tokenizer, "pad_token_id", None) is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
     return RoutedCausalLM(model, settings.layer_path), tokenizer, device
+
+
+def load_teacher_student(
+    settings: ModelSettings,
+    student_model_id: str | None = None,
+) -> tuple[RoutedCausalLM, RoutedCausalLM, object, torch.device]:
+    """Load an immutable full-depth teacher and an independently trainable student."""
+
+    device = resolve_device(settings.device)
+    dtype = resolve_dtype(settings.dtype, device)
+    common = {
+        "torch_dtype": dtype,
+        "trust_remote_code": settings.trust_remote_code,
+        "local_files_only": settings.local_files_only,
+    }
+    tokenizer = AutoTokenizer.from_pretrained(
+        settings.model_id,
+        trust_remote_code=settings.trust_remote_code,
+        local_files_only=settings.local_files_only,
+    )
+    teacher_model = AutoModelForCausalLM.from_pretrained(settings.model_id, **common)
+    teacher_model.to(device)
+    teacher_model.eval()
+    teacher_model.requires_grad_(False)
+    student_model = AutoModelForCausalLM.from_pretrained(
+        student_model_id or settings.model_id,
+        **common,
+    )
+    student_model.to(device)
+    student_model.train()
+    if getattr(tokenizer, "pad_token_id", None) is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+    return (
+        RoutedCausalLM(teacher_model, settings.layer_path),
+        RoutedCausalLM(student_model, settings.layer_path),
+        tokenizer,
+        device,
+    )

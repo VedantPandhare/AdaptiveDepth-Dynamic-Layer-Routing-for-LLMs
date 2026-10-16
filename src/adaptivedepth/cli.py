@@ -16,6 +16,7 @@ from adaptivedepth.compiler.pareto import RouteMeasurement, pareto_frontier
 from adaptivedepth.config import (
     load_compiler_settings,
     load_evaluation_settings,
+    load_phase5_settings,
     load_project_settings,
 )
 from adaptivedepth.routes import RouteLibrary
@@ -441,6 +442,49 @@ def run_phase4(
     save_gate_report(gate, gate_json_path, gate_markdown_path)
     typer.echo(f"Phase 4 verdict: {gate['verdict']}")
     typer.echo(f"All artifacts saved under {workspace}")
+
+
+@app.command("run-phase5")
+def run_phase5_command(
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase5_t4.yaml"),
+    routes_file: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase5_routes.yaml"),
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("data/phase5_train.jsonl"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase5"),
+    resume: Annotated[bool, typer.Option("--resume/--no-resume")] = True,
+) -> None:
+    """Train a route-robust student against a frozen full-depth teacher."""
+
+    from adaptivedepth.model.loading import load_teacher_student
+    from adaptivedepth.training import (
+        find_latest_checkpoint,
+        load_training_examples,
+        train_phase5,
+    )
+
+    settings = load_phase5_settings(config)
+    routes = RouteLibrary.load(routes_file)
+    checkpoint = find_latest_checkpoint(output) if resume else None
+    if checkpoint is not None:
+        typer.echo(f"Found resumable checkpoint: {checkpoint}")
+    teacher, student, tokenizer, device = load_teacher_student(
+        settings.model,
+        student_model_id=str(checkpoint) if checkpoint is not None else None,
+    )
+    summary = train_phase5(
+        teacher=teacher,
+        student=student,
+        tokenizer=tokenizer,
+        device=device,
+        model_id=settings.model.model_id,
+        dataset_path=dataset,
+        examples=load_training_examples(dataset),
+        routes=routes,
+        settings=settings.training,
+        output_dir=output,
+        resume_checkpoint=checkpoint,
+        progress=typer.echo,
+    )
+    typer.echo(f"Phase 5 complete: {summary['final_checkpoint']}")
 
 
 if __name__ == "__main__":
