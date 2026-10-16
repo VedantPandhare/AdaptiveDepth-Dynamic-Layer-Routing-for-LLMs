@@ -94,7 +94,7 @@ def _save_checkpoint(
     tokenizer: Any,
     optimizer: torch.optim.Optimizer,
     scheduler: torch.optim.lr_scheduler.LRScheduler,
-    scaler: torch.cuda.amp.GradScaler,
+    scaler: torch.amp.GradScaler,
     identity: dict[str, Any],
     keep_last: int,
 ) -> Path:
@@ -188,7 +188,8 @@ def train_phase5(
         lambda step: _scheduler_lambda(step, settings.warmup_steps, settings.max_steps),
     )
     parameter_dtype = next(student.model.parameters()).dtype
-    scaler = torch.cuda.amp.GradScaler(
+    scaler = torch.amp.GradScaler(
+        "cuda",
         enabled=device.type == "cuda" and parameter_dtype == torch.float16
     )
     start_step = 0

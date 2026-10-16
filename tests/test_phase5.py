@@ -4,6 +4,7 @@ import json
 
 import pytest
 import torch
+from transformers import Qwen2Config, Qwen2ForCausalLM
 
 from adaptivedepth.config import TrainingSettings, load_phase5_settings
 from adaptivedepth.routes import RouteDefinition, RouteLibrary
@@ -19,6 +20,8 @@ from adaptivedepth.training.objective import (
 )
 from adaptivedepth.training.prepare import normalize_dolly_records
 from adaptivedepth.training.trainer import find_latest_checkpoint, sample_plan
+from adaptivedepth.training.trainer import train_phase5
+from adaptivedepth.model.routed_model import RoutedCausalLM
 
 
 class WordTokenizer:
@@ -27,6 +30,9 @@ class WordTokenizer:
 
     def __call__(self, text: str, **_kwargs):
         return {"input_ids": [index + 1 for index, _word in enumerate(text.split())]}
+
+    def save_pretrained(self, path) -> None:
+        (path / "tokenizer_config.json").write_text("{}", encoding="utf-8")
 
 
 def test_phase5_configs_and_measured_routes_are_valid() -> None:
@@ -97,3 +103,52 @@ def test_dolly_normalization_is_seeded_and_strict() -> None:
     assert len(first) == 3
     with pytest.raises(ValueError):
         TrainingSettings(language_model_weight=0, distillation_weight=0)
+
+
+def test_tiny_qwen_teacher_student_step_saves_complete_checkpoint(tmp_path) -> None:
+    config = Qwen2Config(
+        vocab_size=32,
+        hidden_size=16,
+        intermediate_size=32,
+        num_hidden_layers=4,
+        num_attention_heads=4,
+        num_key_value_heads=2,
+        max_position_embeddings=64,
+    )
+    teacher_model = Qwen2ForCausalLM(config)
+    student_model = Qwen2ForCausalLM(config)
+    student_model.load_state_dict(teacher_model.state_dict())
+    teacher = RoutedCausalLM(teacher_model, "model.layers")
+    student = RoutedCausalLM(student_model, "model.layers")
+    dataset = tmp_path / "train.jsonl"
+    dataset.write_text(
+        json.dumps({"instruction": "Name one color", "response": "Blue"}) + "\n",
+        encoding="utf-8",
+    )
+    settings = TrainingSettings(
+        max_seq_length=32,
+        max_steps=1,
+        warmup_steps=0,
+        checkpoint_every=1,
+        keep_last_checkpoints=1,
+        gradient_checkpointing=False,
+    )
+    summary = train_phase5(
+        teacher=teacher,
+        student=student,
+        tokenizer=WordTokenizer(),
+        device=torch.device("cpu"),
+        model_id="tiny-qwen",
+        dataset_path=dataset,
+        examples=load_training_examples(dataset),
+        routes=RouteLibrary(
+            routes=[RouteDefinition(route_id="tiny-route", active_layers=[0, 2, 3])]
+        ),
+        settings=settings,
+        output_dir=tmp_path / "output",
+        progress=lambda _message: None,
+    )
+    checkpoint = tmp_path / "output" / "checkpoint-step-000001"
+    assert summary["status"] == "completed"
+    assert (checkpoint / "complete.json").exists()
+    assert (checkpoint / "training_state.pt").exists()

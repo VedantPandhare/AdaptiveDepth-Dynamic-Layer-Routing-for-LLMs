@@ -12,10 +12,9 @@ probe-and-restart fallback rather than unsafe mid-generation layer activation.
 
 ## Current milestone
 
-The software implementation is at approximately **30%** of the strengthened
-design: Phases 1-3 are implemented, and the complete Phase 4 static-route
-experiment is ready to run on a cloud GPU. This percentage does not imply that
-the real-checkpoint measurements have already been collected.
+The software implementation is at approximately **43%** of the strengthened
+design. The Phase 4 static-route experiment is complete on a T4, and the Phase
+5 route-aware training pipeline is implemented and ready for its cloud run.
 
 ## Implemented foundation
 
@@ -32,6 +31,10 @@ the real-checkpoint measurements have already been collected.
 - Resumable static-route experiments with environment and dataset validation.
 - An automated Phase 4 go/no-go gate comparing compiled routes with baselines.
 - A 30-case English evaluation set and a Colab/Kaggle GPU notebook.
+- A frozen four-route training library selected from the Phase 4 measurements.
+- Frozen-teacher/trainable-student route-aware distillation with deterministic
+  sampling and atomic resumable checkpoints.
+- Separate English training-data preparation and a Phase 5 T4 notebook.
 - Offline unit tests using a toy causal transformer.
 
 See [implementation status](docs/IMPLEMENTATION_STATUS.md) for the phase-level
@@ -40,6 +43,8 @@ experiment.
 
 The first T4 experiment and its `revise_routes` decision are summarized in the
 [Phase 4 results](docs/PHASE4_RESULTS.md).
+The next execution procedure is documented in the
+[Phase 5 runbook](docs/PHASE5_RUNBOOK.md).
 
 ## Setup
 
@@ -92,6 +97,38 @@ different dataset, model, benchmark configuration, code revision, or GPU.
 
 For a hosted notebook, open
 [`notebooks/phase4_colab_kaggle.ipynb`](notebooks/phase4_colab_kaggle.ipynb).
+
+## Phase 5 route-aware training
+
+Run the four-step cloud smoke test first:
+
+```powershell
+adaptivedepth run-phase5 `
+  --config configs/phase5_smoke.yaml `
+  --routes-file configs/phase5_routes.yaml `
+  --dataset data/phase5_train_smoke.jsonl `
+  --output experiments/phase5_smoke `
+  --resume
+```
+
+For the full run, install the data extra, prepare a separate 2,000-example
+English training set, and start the resumable T4 configuration:
+
+```powershell
+python -m pip install -e ".[data]"
+adaptivedepth prepare-phase5-data --output data/phase5_train.jsonl --max-examples 2000
+adaptivedepth run-phase5 `
+  --config configs/phase5_t4.yaml `
+  --routes-file configs/phase5_routes.yaml `
+  --dataset data/phase5_train.jsonl `
+  --output experiments/phase5 `
+  --resume
+```
+
+The hosted workflow is
+[`notebooks/phase5_colab_kaggle.ipynb`](notebooks/phase5_colab_kaggle.ipynb).
+Training completion is not the quality gate: the resulting student must be
+rerun through the Phase 4 static evaluation before routing work continues.
 
 The final roadmap also includes a required
 [interactive prompt demonstration](docs/DEMO_APPLICATION_SPEC.md) backed by the
