@@ -75,6 +75,7 @@ class TrainingSettings(BaseModel):
     distillation_temperature: float = Field(default=2.0, gt=0)
     full_route_probability: float = Field(default=0.2, ge=0, le=1)
     checkpoint_every: int = Field(default=50, ge=1)
+    keep_last_checkpoints: int = Field(default=2, ge=1, le=10)
     log_every: int = Field(default=5, ge=1)
     gradient_checkpointing: bool = True
 

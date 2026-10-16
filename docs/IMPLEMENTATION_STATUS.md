@@ -3,17 +3,17 @@
 The design memo defines eleven implementation phases. Progress is counted by
 working, tested capabilities—not by files created.
 
-Current implementation milestone: **approximately 35%**. This measures tested
-software capabilities only; it does not claim that real-model experiments have
-already been completed.
+Current implementation milestone: **approximately 43%**. This measures tested
+software capabilities plus the completed Phase 4 cloud experiment. Phase 5 is
+implemented locally but its real T4 training run and post-training gate remain.
 
 | Phase | Capability | Status |
 |---:|---|---|
-| 1 | Reproducible baseline and latency harness | Implemented; real-model run pending checkpoint availability |
-| 2 | Block influence, ablation routes, route benchmarking, and teacher KL | Implemented; real measurements pending |
-| 3 | Candidate route compiler and Pareto filtering | Implemented; real candidate measurements pending |
+| 1 | Reproducible baseline and latency harness | Implemented and exercised on T4 |
+| 2 | Block influence, ablation routes, route benchmarking, and teacher KL | Implemented and exercised on T4 |
+| 3 | Candidate route compiler and Pareto filtering | Implemented and exercised on T4 |
 | 4 | Static route evaluation and go/no-go gate | Complete on T4; valid speed-quality frontier measured, verdict `revise_routes` |
-| 5 | Route-aware robustness training | Not started |
+| 5 | Route-aware robustness training | Implemented; T4 smoke/full run pending |
 | 6 | Route-regret dataset generation | Not started |
 | 7 | Calibrated risk router | Not started |
 | 8 | Rescue predictor | Not started |
@@ -35,9 +35,11 @@ tested without downloading it; real experiment commands load it only when run.
 The Phase 4 T4 experiment is complete and documented in
 [`PHASE4_RESULTS.md`](PHASE4_RESULTS.md). Its `revise_routes` verdict shows that
 the raw checkpoint gains latency from reduced depth but does not retain enough
-quality or teacher agreement. The next implementation milestone is Phase 5:
-route-aware robustness training on a compact measured route library, followed
-by the same static gate before any risk router is trained.
+quality or teacher agreement. Phase 5 now has a fixed measured route library,
+separate training data, frozen-teacher distillation, deterministic sampling,
+atomic resumable checkpoints, bounded checkpoint retention, tests, and a cloud
+notebook. The next execution milestone is its T4 run followed by the same
+static gate before any risk router is trained.
 
 The final project includes a required interactive application where a user
 enters a prompt and sees the generated answer, selected route, active/skipped

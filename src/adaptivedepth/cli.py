@@ -487,5 +487,19 @@ def run_phase5_command(
     typer.echo(f"Phase 5 complete: {summary['final_checkpoint']}")
 
 
+@app.command("prepare-phase5-data")
+def prepare_phase5_data_command(
+    output: Annotated[Path, typer.Option()] = Path("data/phase5_train.jsonl"),
+    max_examples: Annotated[int, typer.Option(min=1)] = 2000,
+    seed: Annotated[int, typer.Option()] = 17,
+) -> None:
+    """Create the separate English Phase 5 training set from Dolly 15k."""
+
+    from adaptivedepth.training.prepare import prepare_dolly_dataset
+
+    count = prepare_dolly_dataset(output, max_examples=max_examples, seed=seed)
+    typer.echo(f"Saved {count} training examples to {output}")
+
+
 if __name__ == "__main__":
     app()

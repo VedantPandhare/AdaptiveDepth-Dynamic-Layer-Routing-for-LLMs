@@ -23,3 +23,8 @@ comparable.
 Experiment schema version 2 uses fixed-length generation for latency
 comparison while preserving EOS-truncated answer text. Delete or separately
 archive any schema version 1 smoke workspace instead of resuming it.
+
+`phase5_colab_kaggle.ipynb` performs route-aware teacher/student training after
+the Phase 4 `revise_routes` verdict. It first runs four smoke optimizer steps,
+then prepares a separate English training set and runs the resumable T4
+configuration. See [`../docs/PHASE5_RUNBOOK.md`](../docs/PHASE5_RUNBOOK.md).

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
 import random
 import shutil
 import tempfile
@@ -97,6 +96,7 @@ def _save_checkpoint(
     scheduler: torch.optim.lr_scheduler.LRScheduler,
     scaler: torch.cuda.amp.GradScaler,
     identity: dict[str, Any],
+    keep_last: int,
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     final = output_dir / f"checkpoint-step-{step:06d}"
@@ -123,6 +123,16 @@ def _save_checkpoint(
     except BaseException:
         shutil.rmtree(temporary, ignore_errors=True)
         raise
+    completed = sorted(
+        (
+            candidate
+            for candidate in output_dir.glob("checkpoint-step-*")
+            if candidate.is_dir() and (candidate / "complete.json").exists()
+        ),
+        key=lambda path: path.name,
+    )
+    for expired in completed[:-keep_last]:
+        shutil.rmtree(expired)
     return final
 
 
@@ -275,6 +285,7 @@ def train_phase5(
                 scheduler,
                 scaler,
                 identity,
+                settings.keep_last_checkpoints,
             )
             progress(f"Saved {checkpoint}")
 
@@ -288,6 +299,7 @@ def train_phase5(
         scheduler,
         scaler,
         identity,
+        settings.keep_last_checkpoints,
     )
     summary = {
         "status": "completed",
