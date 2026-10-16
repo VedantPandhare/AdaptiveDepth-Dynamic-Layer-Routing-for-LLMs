@@ -182,15 +182,25 @@ def train_phase5(
         student.model.parameters(),
         lr=settings.learning_rate,
         weight_decay=settings.weight_decay,
+        foreach=False,
     )
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer,
         lambda step: _scheduler_lambda(step, settings.warmup_steps, settings.max_steps),
     )
     parameter_dtype = next(student.model.parameters()).dtype
+    compute_dtype = next(teacher.model.parameters()).dtype
+    if (
+        device.type == "cuda"
+        and compute_dtype == torch.float16
+        and parameter_dtype != torch.float32
+    ):
+        raise ValueError(
+            "FP16 training requires an FP32 student; reload with load_teacher_student"
+        )
     scaler = torch.amp.GradScaler(
         "cuda",
-        enabled=device.type == "cuda" and parameter_dtype == torch.float16
+        enabled=device.type == "cuda" and compute_dtype == torch.float16,
     )
     start_step = 0
     if resume_checkpoint is not None:
@@ -230,9 +240,9 @@ def train_phase5(
                 "attention_mask": batch["attention_mask"],
                 "use_cache": False,
             }
-            with torch.no_grad(), _autocast(device, parameter_dtype):
+            with torch.no_grad(), _autocast(device, compute_dtype):
                 teacher_logits = teacher(**model_inputs).logits
-            with student.use_route(plan.route), _autocast(device, parameter_dtype):
+            with student.use_route(plan.route), _autocast(device, compute_dtype):
                 student_logits = student(**model_inputs).logits
                 losses = route_training_loss(
                     student_logits,

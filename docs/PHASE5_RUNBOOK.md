@@ -33,6 +33,11 @@ self-distillation, while preserving the project's cache-safe whole-request
 routing constraint. Teacher and student are separate model instances, so the
 target cannot drift as the student updates.
 
+On a T4, the frozen teacher is stored in FP16. The trainable student retains
+FP32 master parameters while FP16 autocast handles matrix operations. This is
+required for numerically safe gradient scaling; directly training FP16
+parameters produces FP16 gradients that PyTorch's scaler refuses to unscale.
+
 ## Cloud procedure
 
 1. Push the current repository commit.

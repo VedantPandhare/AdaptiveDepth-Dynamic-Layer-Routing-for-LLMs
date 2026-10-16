@@ -56,7 +56,6 @@ def load_teacher_student(
     device = resolve_device(settings.device)
     dtype = resolve_dtype(settings.dtype, device)
     common = {
-        "torch_dtype": dtype,
         "trust_remote_code": settings.trust_remote_code,
         "local_files_only": settings.local_files_only,
     }
@@ -65,12 +64,22 @@ def load_teacher_student(
         trust_remote_code=settings.trust_remote_code,
         local_files_only=settings.local_files_only,
     )
-    teacher_model = AutoModelForCausalLM.from_pretrained(settings.model_id, **common)
+    teacher_model = AutoModelForCausalLM.from_pretrained(
+        settings.model_id, torch_dtype=dtype, **common
+    )
     teacher_model.to(device)
     teacher_model.eval()
     teacher_model.requires_grad_(False)
+    # AMP needs FP32 master parameters. Loading the trainable model directly in
+    # FP16 creates FP16 gradients, which GradScaler intentionally refuses to
+    # unscale. The frozen teacher remains compact while autocast keeps student
+    # matrix operations in the configured compute dtype.
+    student_dtype = (
+        torch.float32 if dtype in {torch.float16, torch.bfloat16} else dtype
+    )
     student_model = AutoModelForCausalLM.from_pretrained(
         student_model_id or settings.model_id,
+        torch_dtype=student_dtype,
         **common,
     )
     student_model.to(device)
