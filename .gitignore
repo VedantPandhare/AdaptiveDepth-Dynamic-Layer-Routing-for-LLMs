@@ -14,6 +14,7 @@ experiments/**/*.csv
 experiments/**/*.yaml
 experiments/**/*.md
 experiments/**/*.tmp
+experiments/**/*.joblib
 phase4_artifacts.zip
 phase4_smoke_artifacts.zip
 phase5_student.zip
@@ -36,6 +37,8 @@ phase6_artifacts.zip
 /data/phase5_correction_train.jsonl
 /data/phase6_calibration.jsonl
 /phase6_artifacts/
+/phase6/
+phase7_artifacts.zip
 /checkpoint-step-*/
 artifacts/
 models/

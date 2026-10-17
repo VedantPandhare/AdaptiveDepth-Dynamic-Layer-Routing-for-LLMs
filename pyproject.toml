@@ -19,8 +19,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "scikit-learn>=1.4,<2"]
 data = ["datasets>=3.0"]
+router = ["scikit-learn>=1.4,<2"]
 
 [project.scripts]
 adaptivedepth = "adaptivedepth.cli:app"

@@ -19,6 +19,7 @@ from adaptivedepth.config import (
     load_phase5_evaluation_settings,
     load_phase5_settings,
     load_phase6_settings,
+    load_phase7_settings,
     load_project_settings,
 )
 from adaptivedepth.routes import RouteLibrary
@@ -696,6 +697,33 @@ def run_phase6_command(
     )
     typer.echo(f"Phase 6 verdict: {report['verdict']}")
     typer.echo(f"Saved Phase 6 artifacts under {workspace}")
+
+
+@app.command("train-phase7")
+def train_phase7_command(
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path(
+        "phase6/router_dataset.jsonl"
+    ),
+    phase6_gate: Annotated[Path, typer.Option(exists=True)] = Path(
+        "phase6/gate.json"
+    ),
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase7.yaml"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase7"),
+) -> None:
+    """Train and evaluate the conservative Phase 7 risk router."""
+
+    from adaptivedepth.routing.risk_router import train_phase7_router
+
+    report = train_phase7_router(
+        dataset_path=dataset,
+        phase6_gate_path=phase6_gate,
+        settings=load_phase7_settings(config),
+        output_dir=output,
+        config_path=config,
+    )
+    typer.echo(f"Phase 7 verdict: {report['verdict']}")
+    typer.echo(f"Router: {output / 'router.joblib'}")
+    typer.echo(f"Report: {output / 'gate.md'}")
 
 
 if __name__ == "__main__":

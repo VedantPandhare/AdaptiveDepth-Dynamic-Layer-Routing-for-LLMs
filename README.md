@@ -12,10 +12,10 @@ probe-and-restart fallback rather than unsafe mid-generation layer activation.
 
 ## Current milestone
 
-The software implementation is at approximately **55%** of the strengthened
-design. Phase 5 training, correction, and stabilized confirmation are complete
-on a T4. The compact application-track Phase 6 route-regret collector is ready
-for its cloud run.
+The software implementation is at approximately **65%** of the strengthened
+design. Phase 6 produced 200 route-regret examples on a T4, and the first
+leakage-controlled Phase 7 risk-router run completed. Its conservative verdict
+is `revise_router`, so adaptive routing remains disabled until correction.
 
 ## Implemented foundation
 
@@ -38,6 +38,9 @@ for its cloud run.
 - Separate English training-data preparation and a Phase 5 T4 notebook.
 - A resumable compact full-vs-route regret collector with predetermined
   safety labels and a Phase 7 readiness gate.
+- A calibrated CPU risk-router trainer with nested out-of-fold threshold
+  selection, a locked holdout gate, auditable predictions, and fail-closed
+  serialization.
 - Offline unit tests using a toy causal transformer.
 
 See [implementation status](docs/IMPLEMENTATION_STATUS.md) for the phase-level
@@ -180,6 +183,25 @@ adaptivedepth run-phase6 `
   --workspace experiments/phase6 `
   --resume
 ```
+
+Phase 6 passed its application-track readiness gate with 200 valid examples,
+including 42 safe-route and 158 full-model labels. Train and evaluate the
+prompt-only Phase 7 router on CPU:
+
+```powershell
+python -m pip install -e ".[router]"
+adaptivedepth train-phase7 `
+  --dataset phase6/router_dataset.jsonl `
+  --phase6-gate phase6/gate.json `
+  --config configs/phase7.yaml `
+  --output experiments/phase7
+```
+
+The first locked run returned `revise_router`: development out-of-fold
+predictions did not find a threshold meeting 80% precision at 5% coverage.
+The artifact therefore fails closed to full depth. See the
+[`Phase 7 runbook`](docs/PHASE7_RUNBOOK.md) and its
+[Drive-based CPU notebook](notebooks/phase7_router_training_drive.ipynb).
 
 The final roadmap also includes a required
 [interactive prompt demonstration](docs/DEMO_APPLICATION_SPEC.md) backed by the

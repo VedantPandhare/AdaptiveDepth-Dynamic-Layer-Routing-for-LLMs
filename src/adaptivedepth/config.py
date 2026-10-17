@@ -131,6 +131,35 @@ class Phase6Settings(BaseModel):
     )
 
 
+class Phase7RouterSettings(BaseModel):
+    """Leakage-controlled prompt-risk router training settings."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    seed: int = 17
+    test_fraction: float = Field(default=0.20, gt=0, lt=0.5)
+    outer_cv_folds: int = Field(default=5, ge=2, le=10)
+    calibration_cv_folds: int = Field(default=3, ge=2, le=10)
+    calibration_method: Literal["sigmoid", "isotonic"] = "sigmoid"
+    max_text_features: int = Field(default=2000, ge=100)
+    min_ngram: int = Field(default=1, ge=1, le=3)
+    max_ngram: int = Field(default=2, ge=1, le=3)
+    logistic_c: float = Field(default=1.0, gt=0)
+    target_safe_precision: float = Field(default=0.80, gt=0, le=1)
+    min_route_coverage: float = Field(default=0.05, gt=0, lt=1)
+    min_routed_test_examples: int = Field(default=2, ge=1)
+    min_gross_latency_reduction: float = Field(default=0.005, ge=0, lt=1)
+    max_expected_calibration_error: float = Field(default=0.15, ge=0, le=1)
+    max_brier_score: float = Field(default=0.20, ge=0, le=1)
+    calibration_bins: int = Field(default=10, ge=2, le=50)
+
+    @model_validator(mode="after")
+    def validate_ngrams(self) -> "Phase7RouterSettings":
+        if self.min_ngram > self.max_ngram:
+            raise ValueError("min_ngram must not exceed max_ngram")
+        return self
+
+
 def _load_yaml(path: str | Path) -> dict:
     with Path(path).open("r", encoding="utf-8") as handle:
         value = yaml.safe_load(handle)
@@ -159,3 +188,7 @@ def load_phase5_evaluation_settings(path: str | Path) -> Phase5EvaluationSetting
 
 def load_phase6_settings(path: str | Path) -> Phase6Settings:
     return Phase6Settings.model_validate(_load_yaml(path))
+
+
+def load_phase7_settings(path: str | Path) -> Phase7RouterSettings:
+    return Phase7RouterSettings.model_validate(_load_yaml(path))

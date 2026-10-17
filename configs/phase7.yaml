@@ -1,0 +1,22 @@
+seed: 17
+test_fraction: 0.20
+outer_cv_folds: 5
+calibration_cv_folds: 3
+calibration_method: sigmoid
+
+max_text_features: 2000
+min_ngram: 1
+max_ngram: 2
+logistic_c: 1.0
+
+# Only high-confidence prompts take the 21-layer route. The threshold is
+# selected from out-of-fold development predictions, never the test split.
+target_safe_precision: 0.80
+min_route_coverage: 0.05
+min_routed_test_examples: 2
+
+# Application-track acceptance criteria on the untouched test split.
+min_gross_latency_reduction: 0.005
+max_expected_calibration_error: 0.15
+max_brier_score: 0.20
+calibration_bins: 10

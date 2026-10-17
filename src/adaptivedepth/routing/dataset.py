@@ -14,6 +14,7 @@ from torch.nn import functional as F
 from adaptivedepth.config import Phase6CalibrationSettings
 from adaptivedepth.model.routed_model import RoutedCausalLM
 from adaptivedepth.routes import RouteDefinition
+from adaptivedepth.routing.features import prompt_features
 from adaptivedepth.runtime.environment import capture_environment
 from adaptivedepth.runtime.generation import profile_greedy_generation
 from adaptivedepth.training.data import (
@@ -55,21 +56,6 @@ def render_prompt(example: TrainingExample) -> str:
     if not example.context.strip():
         return instruction
     return f"{instruction}\n\nContext:\n{example.context.strip()}"
-
-
-def prompt_features(prompt: str, prompt_tokens: int) -> dict[str, float | int | bool]:
-    characters = len(prompt)
-    digits = sum(character.isdigit() for character in prompt)
-    return {
-        "character_count": characters,
-        "word_count": len(prompt.split()),
-        "prompt_token_count": prompt_tokens,
-        "newline_count": prompt.count("\n"),
-        "question_mark_count": prompt.count("?"),
-        "digit_fraction": digits / max(characters, 1),
-        "contains_code_fence": "```" in prompt,
-        "contains_math_symbol": bool(re.search(r"[=+*/^]", prompt)),
-    }
 
 
 def response_regret_metrics(
