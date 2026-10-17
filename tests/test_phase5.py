@@ -6,7 +6,17 @@ import pytest
 import torch
 from transformers import Qwen2Config, Qwen2ForCausalLM
 
-from adaptivedepth.config import TrainingSettings, load_phase5_settings
+from adaptivedepth.config import (
+    Phase5EvaluationSettings,
+    TrainingSettings,
+    load_phase5_evaluation_settings,
+    load_phase5_settings,
+)
+from adaptivedepth.evaluation.post_training import (
+    evaluate_post_training_gate,
+    post_training_markdown,
+)
+from adaptivedepth.model.routed_model import RoutedCausalLM
 from adaptivedepth.routes import RouteDefinition, RouteLibrary
 from adaptivedepth.training.data import (
     TrainingExample,
@@ -19,9 +29,11 @@ from adaptivedepth.training.objective import (
     teacher_student_kl,
 )
 from adaptivedepth.training.prepare import normalize_dolly_records
-from adaptivedepth.training.trainer import find_latest_checkpoint, sample_plan
-from adaptivedepth.training.trainer import train_phase5
-from adaptivedepth.model.routed_model import RoutedCausalLM
+from adaptivedepth.training.trainer import (
+    find_latest_checkpoint,
+    sample_plan,
+    train_phase5,
+)
 
 
 class WordTokenizer:
@@ -37,9 +49,11 @@ class WordTokenizer:
 
 def test_phase5_configs_and_measured_routes_are_valid() -> None:
     settings = load_phase5_settings("configs/phase5_smoke.yaml")
+    evaluation = load_phase5_evaluation_settings("configs/phase5_evaluation.yaml")
     routes = RouteLibrary.load("configs/phase5_routes.yaml")
     routes.validate_for_depth(24)
     assert settings.training.max_steps == 4
+    assert evaluation.max_full_quality_drop == 0.05
     assert [len(route.active_layers) for route in routes.routes] == [20, 21, 22, 23]
 
 
@@ -152,3 +166,90 @@ def test_tiny_qwen_teacher_student_step_saves_complete_checkpoint(tmp_path) -> N
     assert summary["status"] == "completed"
     assert (checkpoint / "complete.json").exists()
     assert (checkpoint / "training_state.pt").exists()
+
+
+def _post_training_payloads(
+    *, full_quality: float = 0.5, route_quality: float = 0.5
+) -> tuple[dict, dict]:
+    full_measurement = {
+        "route_id": "full",
+        "source": "full_model",
+        "active_layers": 24,
+        "quality": full_quality,
+        "quality_delta": 0.0,
+        "latency_ms": 100.0,
+        "latency_reduction": 0.0,
+        "teacher_divergence": 0.0,
+    }
+    route_measurement = {
+        "route_id": "route_target_21",
+        "source": "phase4_pareto_selection",
+        "active_layers": 21,
+        "quality": route_quality,
+        "quality_delta": route_quality - full_quality,
+        "latency_ms": 85.0,
+        "latency_basis": "fixed_generation_length",
+        "latency_reduction": 0.15,
+        "teacher_divergence": 0.3,
+    }
+    experiment = {
+        "status": "completed",
+        "identity": {"dataset_sha256": "same-data"},
+        "full_baseline": {"measurement": full_measurement},
+        "routes": {
+            "route_target_21": {
+                "route": {
+                    "route_id": "route_target_21",
+                    "active_layers": list(range(21)),
+                    "source": "phase4_pareto_selection",
+                    "metadata": {"original_route_id": "random_b21_v00"},
+                },
+                "measurement": route_measurement,
+            }
+        },
+    }
+    reference = {
+        "dataset_sha256": "same-data",
+        "full_baseline": {"quality": 0.5},
+        "routes": {
+            "random_b21_v00": {
+                "quality": 0.4,
+                "quality_delta": -0.1,
+                "teacher_divergence": 3.1,
+            }
+        },
+    }
+    return experiment, reference
+
+
+def test_post_training_gate_proceeds_for_preserved_full_and_safe_route() -> None:
+    experiment, reference = _post_training_payloads()
+    report = evaluate_post_training_gate(
+        experiment, reference, Phase5EvaluationSettings()
+    )
+    assert report["verdict"] == "proceed_to_phase6"
+    assert report["passing_route_ids"] == ["route_target_21"]
+    assert report["routes"][0]["quality_gain"] == pytest.approx(0.1)
+    assert report["routes"][0]["teacher_divergence_reduction"] == pytest.approx(2.8)
+    assert "Full-model retention" in post_training_markdown(report)
+
+
+def test_post_training_gate_rejects_full_model_regression() -> None:
+    experiment, reference = _post_training_payloads(
+        full_quality=0.4, route_quality=0.4
+    )
+    report = evaluate_post_training_gate(
+        experiment, reference, Phase5EvaluationSettings()
+    )
+    assert report["verdict"] == "revise_training"
+    assert not report["full_quality_preserved"]
+    assert report["passing_route_ids"] == []
+
+
+def test_post_training_gate_rejects_a_different_evaluation_dataset() -> None:
+    experiment, reference = _post_training_payloads()
+    experiment["identity"]["dataset_sha256"] = "different-data"
+    with pytest.raises(ValueError, match="datasets differ"):
+        evaluate_post_training_gate(
+            experiment, reference, Phase5EvaluationSettings()
+        )

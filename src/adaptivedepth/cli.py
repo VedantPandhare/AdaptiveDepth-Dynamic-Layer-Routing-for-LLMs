@@ -16,6 +16,7 @@ from adaptivedepth.compiler.pareto import RouteMeasurement, pareto_frontier
 from adaptivedepth.config import (
     load_compiler_settings,
     load_evaluation_settings,
+    load_phase5_evaluation_settings,
     load_phase5_settings,
     load_project_settings,
 )
@@ -499,6 +500,62 @@ def prepare_phase5_data_command(
 
     count = prepare_dolly_dataset(output, max_examples=max_examples, seed=seed)
     typer.echo(f"Saved {count} training examples to {output}")
+
+
+@app.command("run-phase5-evaluation")
+def run_phase5_evaluation_command(
+    checkpoint: Annotated[Path, typer.Option(exists=True, file_okay=False)],
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/cloud_t4.yaml"),
+    routes_file: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase5_routes.yaml"),
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("data/phase4_eval.jsonl"),
+    reference_file: Annotated[Path, typer.Option(exists=True)] = Path("data/phase4_reference_metrics.json"),
+    evaluation_config: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase5_evaluation.yaml"),
+    workspace: Annotated[Path, typer.Option()] = Path("experiments/phase5_evaluation"),
+    resume: Annotated[bool, typer.Option("--resume/--no-resume")] = True,
+) -> None:
+    """Evaluate the trained student and decide whether Phase 6 may begin."""
+
+    from adaptivedepth.evaluation.experiment import run_static_experiment
+    from adaptivedepth.evaluation.post_training import (
+        evaluate_post_training_gate,
+        save_post_training_report,
+    )
+    from adaptivedepth.model.loading import load_model
+
+    workspace.mkdir(parents=True, exist_ok=True)
+    experiment_path = workspace / "experiment.json"
+    gate_json_path = workspace / "gate.json"
+    gate_markdown_path = workspace / "gate.md"
+
+    project = load_project_settings(config)
+    checkpoint_path = checkpoint.resolve()
+    model_settings = project.model.model_copy(
+        update={"model_id": str(checkpoint_path), "local_files_only": True}
+    )
+    routed_model, tokenizer, device = load_model(model_settings)
+    routes = RouteLibrary.load(routes_file)
+    experiment = run_static_experiment(
+        routed_model=routed_model,
+        tokenizer=tokenizer,
+        device=device,
+        model_id=str(checkpoint_path),
+        dataset_path=dataset,
+        settings=project.benchmark,
+        routes=routes,
+        output=experiment_path,
+        resume=resume,
+        workdir=Path.cwd(),
+        progress=typer.echo,
+    )
+    reference = json.loads(reference_file.read_text(encoding="utf-8"))
+    gate = evaluate_post_training_gate(
+        experiment,
+        reference,
+        load_phase5_evaluation_settings(evaluation_config),
+    )
+    save_post_training_report(gate, gate_json_path, gate_markdown_path)
+    typer.echo(f"Phase 5 post-training verdict: {gate['verdict']}")
+    typer.echo(f"Saved evaluation artifacts under {workspace}")
 
 
 if __name__ == "__main__":

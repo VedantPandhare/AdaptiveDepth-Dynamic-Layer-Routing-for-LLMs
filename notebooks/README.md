@@ -28,3 +28,10 @@ archive any schema version 1 smoke workspace instead of resuming it.
 the Phase 4 `revise_routes` verdict. It first runs four smoke optimizer steps,
 then prepares a separate English training set and runs the resumable T4
 configuration. See [`../docs/PHASE5_RUNBOOK.md`](../docs/PHASE5_RUNBOOK.md).
+
+`phase5_post_training_eval.ipynb` loads the completed student checkpoint,
+benchmarks full-depth and all four trained routes on the original Phase 4
+evaluation set, and produces the Phase 5 acceptance gate. It supports a local
+checkpoint directory, an uploaded inference ZIP, or a Hugging Face model ID.
+See
+[`../docs/PHASE5_EVALUATION_RUNBOOK.md`](../docs/PHASE5_EVALUATION_RUNBOOK.md).

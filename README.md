@@ -130,6 +130,24 @@ The hosted workflow is
 Training completion is not the quality gate: the resulting student must be
 rerun through the Phase 4 static evaluation before routing work continues.
 
+After the 500-step checkpoint is available, run the dedicated post-training
+evaluation on a GPU:
+
+```powershell
+adaptivedepth run-phase5-evaluation `
+  --checkpoint checkpoint-step-000500 `
+  --config configs/cloud_t4.yaml `
+  --routes-file configs/phase5_routes.yaml `
+  --dataset data/phase4_eval.jsonl `
+  --workspace experiments/phase5_evaluation `
+  --resume
+```
+
+The corresponding hosted workflow is
+[`notebooks/phase5_post_training_eval.ipynb`](notebooks/phase5_post_training_eval.ipynb).
+It checks full-model retention and compares each trained route with its saved
+Phase 4 measurement before allowing the compact Phase 6 calibration dataset.
+
 The final roadmap also includes a required
 [interactive prompt demonstration](docs/DEMO_APPLICATION_SPEC.md) backed by the
 real router and fallback runtime.

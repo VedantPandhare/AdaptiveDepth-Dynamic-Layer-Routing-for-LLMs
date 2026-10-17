@@ -95,6 +95,15 @@ class Phase5Settings(BaseModel):
     training: TrainingSettings = Field(default_factory=TrainingSettings)
 
 
+class Phase5EvaluationSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    max_full_quality_drop: float = Field(default=0.05, ge=0, le=1)
+    max_route_quality_drop: float = Field(default=0.05, ge=0, le=1)
+    min_latency_reduction: float = Field(default=0.10, ge=0, lt=1)
+    max_teacher_divergence: float = Field(default=0.50, ge=0)
+
+
 def _load_yaml(path: str | Path) -> dict:
     with Path(path).open("r", encoding="utf-8") as handle:
         value = yaml.safe_load(handle)
@@ -115,3 +124,7 @@ def load_evaluation_settings(path: str | Path) -> EvaluationSettings:
 
 def load_phase5_settings(path: str | Path) -> Phase5Settings:
     return Phase5Settings.model_validate(_load_yaml(path))
+
+
+def load_phase5_evaluation_settings(path: str | Path) -> Phase5EvaluationSettings:
+    return Phase5EvaluationSettings.model_validate(_load_yaml(path))

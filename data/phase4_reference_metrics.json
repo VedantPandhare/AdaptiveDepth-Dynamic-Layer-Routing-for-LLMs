@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+  "dataset_sha256": "b50bfac2c54a7bf73ed2ed49d852080f9505f0759e83417266f81a351d70e625",
+  "scoring_method": "answer_match_v2",
+  "full_baseline": {
+    "route_id": "full",
+    "active_layers": 24,
+    "quality": 0.5,
+    "latency_ms": 496.7236215001094,
+    "teacher_divergence": 0.0
+  },
+  "routes": {
+    "candidate_b20_v01": {
+      "route_id": "candidate_b20_v01",
+      "active_layers": 20,
+      "quality": 0.1,
+      "quality_delta": -0.4,
+      "latency_reduction": 0.1539537354176732,
+      "teacher_divergence": 2.1233573079109194
+    },
+    "random_b21_v00": {
+      "route_id": "random_b21_v00",
+      "active_layers": 21,
+      "quality": 0.4,
+      "quality_delta": -0.09999999999999998,
+      "latency_reduction": 0.11314881770761709,
+      "teacher_divergence": 3.1265644311904905
+    },
+    "candidate_b22_v00": {
+      "route_id": "candidate_b22_v00",
+      "active_layers": 22,
+      "quality": 0.4,
+      "quality_delta": -0.09999999999999998,
+      "latency_reduction": 0.06589692554033533,
+      "teacher_divergence": 1.1257634957631428
+    },
+    "candidate_b23_v00": {
+      "route_id": "candidate_b23_v00",
+      "active_layers": 23,
+      "quality": 0.4666666666666667,
+      "quality_delta": -0.033333333333333326,
+      "latency_reduction": 0.05751065836934033,
+      "teacher_divergence": 0.7015140285094579
+    }
+  }
+}

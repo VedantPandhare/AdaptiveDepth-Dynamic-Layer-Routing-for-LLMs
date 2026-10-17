@@ -18,9 +18,11 @@ phase4_artifacts.zip
 phase4_smoke_artifacts.zip
 phase5_student.zip
 phase5_smoke_student.zip
+phase5_evaluation_artifacts.zip
 /phase4_smoke/
 /phase4/
 /data/phase5_train.jsonl
+/checkpoint-step-*/
 artifacts/
 models/
 node_modules/
