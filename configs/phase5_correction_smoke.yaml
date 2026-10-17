@@ -1,0 +1,25 @@
+model:
+  model_id: Qwen/Qwen2.5-0.5B-Instruct
+  device: auto
+  dtype: float16
+  trust_remote_code: false
+  local_files_only: true
+  layer_path: null
+training:
+  seed: 29
+  max_seq_length: 96
+  batch_size: 1
+  gradient_accumulation_steps: 1
+  max_steps: 4
+  learning_rate: 0.000005
+  weight_decay: 0.01
+  warmup_steps: 0
+  gradient_clip_norm: 1.0
+  language_model_weight: 0.1
+  distillation_weight: 0.9
+  distillation_temperature: 2.0
+  full_route_probability: 0.25
+  checkpoint_every: 2
+  keep_last_checkpoints: 2
+  log_every: 1
+  gradient_checkpointing: true

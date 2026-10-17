@@ -7,6 +7,7 @@ import torch
 from transformers import Qwen2Config, Qwen2ForCausalLM
 
 from adaptivedepth.config import (
+    ModelSettings,
     Phase5EvaluationSettings,
     TrainingSettings,
     load_phase5_evaluation_settings,
@@ -28,7 +29,10 @@ from adaptivedepth.training.objective import (
     causal_language_model_loss,
     teacher_student_kl,
 )
-from adaptivedepth.training.prepare import normalize_dolly_records
+from adaptivedepth.training.prepare import (
+    generate_balanced_multiple_choice_examples,
+    normalize_dolly_records,
+)
 from adaptivedepth.training.trainer import (
     find_latest_checkpoint,
     sample_plan,
@@ -55,6 +59,20 @@ def test_phase5_configs_and_measured_routes_are_valid() -> None:
     assert settings.training.max_steps == 4
     assert evaluation.max_full_quality_drop == 0.05
     assert [len(route.active_layers) for route in routes.routes] == [20, 21, 22, 23]
+
+
+def test_phase5_correction_configs_target_only_the_viable_route() -> None:
+    smoke = load_phase5_settings("configs/phase5_correction_smoke.yaml")
+    full = load_phase5_settings("configs/phase5_correction_t4.yaml")
+    routes = RouteLibrary.load("configs/phase5_correction_route.yaml")
+    routes.validate_for_depth(24)
+    assert len(routes.routes) == 1
+    assert routes.routes[0].route_id == "route_target_21"
+    assert len(routes.routes[0].active_layers) == 21
+    assert smoke.training.max_steps == 4
+    assert full.training.max_steps == 100
+    assert full.training.learning_rate == pytest.approx(5e-6)
+    assert full.training.distillation_weight == pytest.approx(0.9)
 
 
 def test_training_dataset_masks_prompt_and_collates(tmp_path) -> None:
@@ -117,6 +135,67 @@ def test_dolly_normalization_is_seeded_and_strict() -> None:
     assert len(first) == 3
     with pytest.raises(ValueError):
         TrainingSettings(language_model_weight=0, distillation_weight=0)
+
+
+def test_correction_data_uses_held_out_slice_and_balanced_labels() -> None:
+    rows = [
+        {"instruction": f"Question {index}", "context": "", "response": "Answer"}
+        for index in range(12)
+    ]
+    original = normalize_dolly_records(rows, max_examples=6, seed=4)
+    held_out = normalize_dolly_records(
+        rows, max_examples=4, seed=4, skip_examples=6
+    )
+    assert {item.instruction for item in original}.isdisjoint(
+        item.instruction for item in held_out
+    )
+    balanced = generate_balanced_multiple_choice_examples(count=12, seed=9)
+    labels = [item.response[0] for item in balanced]
+    assert labels.count("A") == labels.count("B") == 3
+    assert labels.count("C") == labels.count("D") == 3
+    assert generate_balanced_multiple_choice_examples(count=12, seed=9) == balanced
+
+
+def test_teacher_and_student_can_load_from_separate_checkpoints(monkeypatch) -> None:
+    from adaptivedepth.model import loading
+
+    config = Qwen2Config(
+        vocab_size=32,
+        hidden_size=16,
+        intermediate_size=32,
+        num_hidden_layers=2,
+        num_attention_heads=4,
+        num_key_value_heads=2,
+        max_position_embeddings=64,
+    )
+    model_sources: list[str] = []
+    tokenizer_sources: list[str] = []
+
+    class TokenizerFactory:
+        @staticmethod
+        def from_pretrained(source, **_kwargs):
+            tokenizer_sources.append(source)
+            return WordTokenizer()
+
+    class ModelFactory:
+        @staticmethod
+        def from_pretrained(source, **_kwargs):
+            model_sources.append(source)
+            return Qwen2ForCausalLM(config)
+
+    monkeypatch.setattr(loading, "AutoTokenizer", TokenizerFactory)
+    monkeypatch.setattr(loading, "AutoModelForCausalLM", ModelFactory)
+    teacher, student, _tokenizer, device = loading.load_teacher_student(
+        ModelSettings(device="cpu", dtype="float32"),
+        teacher_model_id="base-checkpoint",
+        student_model_id="student-checkpoint",
+    )
+    assert tokenizer_sources == ["base-checkpoint"]
+    assert model_sources == ["base-checkpoint", "student-checkpoint"]
+    assert device.type == "cpu"
+    assert not teacher.model.training
+    assert not any(parameter.requires_grad for parameter in teacher.model.parameters())
+    assert student.model.training
 
 
 def test_tiny_qwen_teacher_student_step_saves_complete_checkpoint(tmp_path) -> None:

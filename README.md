@@ -12,9 +12,10 @@ probe-and-restart fallback rather than unsafe mid-generation layer activation.
 
 ## Current milestone
 
-The software implementation is at approximately **43%** of the strengthened
-design. The Phase 4 static-route experiment is complete on a T4, and the Phase
-5 route-aware training pipeline is implemented and ready for its cloud run.
+The software implementation is at approximately **49%** of the strengthened
+design. Phase 4 and the first Phase 5 training/evaluation cycle are complete on
+a T4. A single targeted Phase 5 correction is implemented for the near-passing
+21-layer route.
 
 ## Implemented foundation
 
@@ -147,6 +148,13 @@ The corresponding hosted workflow is
 [`notebooks/phase5_post_training_eval.ipynb`](notebooks/phase5_post_training_eval.ipynb).
 It checks full-model retention and compares each trained route with its saved
 Phase 4 measurement before allowing the compact Phase 6 calibration dataset.
+
+The first post-training gate preserved full-depth quality, while
+`route_target_21` passed quality and speed but missed the teacher-KL threshold.
+Run the bounded correction from the preserved checkpoint with
+[`notebooks/phase5_correction_drive.ipynb`](notebooks/phase5_correction_drive.ipynb).
+Its rationale, strict stop rule, and equivalent CLI commands are in the
+[`Phase 5 correction runbook`](docs/PHASE5_CORRECTION_RUNBOOK.md).
 
 The final roadmap also includes a required
 [interactive prompt demonstration](docs/DEMO_APPLICATION_SPEC.md) backed by the

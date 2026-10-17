@@ -50,22 +50,25 @@ def load_model(settings: ModelSettings) -> tuple[RoutedCausalLM, object, torch.d
 def load_teacher_student(
     settings: ModelSettings,
     student_model_id: str | None = None,
+    teacher_model_id: str | None = None,
 ) -> tuple[RoutedCausalLM, RoutedCausalLM, object, torch.device]:
     """Load an immutable full-depth teacher and an independently trainable student."""
 
     device = resolve_device(settings.device)
     dtype = resolve_dtype(settings.dtype, device)
+    teacher_source = teacher_model_id or settings.model_id
+    student_source = student_model_id or teacher_source
     common = {
         "trust_remote_code": settings.trust_remote_code,
         "local_files_only": settings.local_files_only,
     }
     tokenizer = AutoTokenizer.from_pretrained(
-        settings.model_id,
+        teacher_source,
         trust_remote_code=settings.trust_remote_code,
         local_files_only=settings.local_files_only,
     )
     teacher_model = AutoModelForCausalLM.from_pretrained(
-        settings.model_id, torch_dtype=dtype, **common
+        teacher_source, torch_dtype=dtype, **common
     )
     teacher_model.to(device)
     teacher_model.eval()
@@ -78,7 +81,7 @@ def load_teacher_student(
         torch.float32 if dtype in {torch.float16, torch.bfloat16} else dtype
     )
     student_model = AutoModelForCausalLM.from_pretrained(
-        student_model_id or settings.model_id,
+        student_source,
         torch_dtype=student_dtype,
         **common,
     )

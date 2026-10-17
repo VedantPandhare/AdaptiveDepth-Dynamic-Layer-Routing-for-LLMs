@@ -488,6 +488,58 @@ def run_phase5_command(
     typer.echo(f"Phase 5 complete: {summary['final_checkpoint']}")
 
 
+@app.command("run-phase5-correction")
+def run_phase5_correction_command(
+    checkpoint: Annotated[Path, typer.Option(exists=True, file_okay=False)],
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase5_correction_t4.yaml"),
+    routes_file: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase5_correction_route.yaml"),
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("data/phase5_correction_train.jsonl"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase5_correction"),
+    resume: Annotated[bool, typer.Option("--resume/--no-resume")] = True,
+) -> None:
+    """Fine-tune one target route from an existing Phase 5 checkpoint."""
+
+    from adaptivedepth.model.loading import load_teacher_student
+    from adaptivedepth.training import (
+        find_latest_checkpoint,
+        load_training_examples,
+        train_phase5,
+    )
+
+    settings = load_phase5_settings(config)
+    routes = RouteLibrary.load(routes_file)
+    if len(routes.routes) != 1:
+        raise typer.BadParameter(
+            "the correction run requires exactly one target route",
+            param_hint="--routes-file",
+        )
+    base_checkpoint = checkpoint.resolve()
+    latest = find_latest_checkpoint(output) if resume else None
+    if latest is not None:
+        typer.echo(f"Found resumable correction checkpoint: {latest}")
+    local_model = settings.model.model_copy(update={"local_files_only": True})
+    teacher, student, tokenizer, device = load_teacher_student(
+        local_model,
+        teacher_model_id=str(base_checkpoint),
+        student_model_id=str(latest or base_checkpoint),
+    )
+    summary = train_phase5(
+        teacher=teacher,
+        student=student,
+        tokenizer=tokenizer,
+        device=device,
+        model_id=str(base_checkpoint),
+        dataset_path=dataset,
+        examples=load_training_examples(dataset),
+        routes=routes,
+        settings=settings.training,
+        output_dir=output,
+        resume_checkpoint=latest,
+        progress=typer.echo,
+    )
+    typer.echo(f"Phase 5 correction complete: {summary['final_checkpoint']}")
+
+
 @app.command("prepare-phase5-data")
 def prepare_phase5_data_command(
     output: Annotated[Path, typer.Option()] = Path("data/phase5_train.jsonl"),
@@ -500,6 +552,28 @@ def prepare_phase5_data_command(
 
     count = prepare_dolly_dataset(output, max_examples=max_examples, seed=seed)
     typer.echo(f"Saved {count} training examples to {output}")
+
+
+@app.command("prepare-phase5-correction-data")
+def prepare_phase5_correction_data_command(
+    output: Annotated[Path, typer.Option()] = Path("data/phase5_correction_train.jsonl"),
+    dolly_examples: Annotated[int, typer.Option(min=1)] = 300,
+    balanced_examples: Annotated[int, typer.Option(min=1)] = 200,
+    skip_dolly_examples: Annotated[int, typer.Option(min=0)] = 2000,
+    seed: Annotated[int, typer.Option()] = 17,
+) -> None:
+    """Create held-out and balanced data for the bounded Phase 5 correction."""
+
+    from adaptivedepth.training.prepare import prepare_phase5_correction_dataset
+
+    count = prepare_phase5_correction_dataset(
+        output,
+        dolly_examples=dolly_examples,
+        balanced_examples=balanced_examples,
+        skip_dolly_examples=skip_dolly_examples,
+        seed=seed,
+    )
+    typer.echo(f"Saved {count} correction examples to {output}")
 
 
 @app.command("run-phase5-evaluation")

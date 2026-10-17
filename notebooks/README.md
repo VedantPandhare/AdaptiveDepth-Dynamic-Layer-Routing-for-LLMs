@@ -40,3 +40,17 @@ See
 the trained checkpoint folder is stored in Google Drive. It validates the
 folder, copies the checkpoint to Colab local disk before inference, and copies
 the final gate artifacts back to `MyDrive/AdaptiveDepth-results`.
+
+`phase5_correction_drive.ipynb` performs the single bounded correction allowed
+after the measured `revise_training` verdict. It starts both the teacher and
+student from the preserved step-500 checkpoint, targets only
+`route_target_21`, saves to a separate workspace, and automatically reruns the
+unchanged acceptance gate after the full correction. See
+[`../docs/PHASE5_CORRECTION_RUNBOOK.md`](../docs/PHASE5_CORRECTION_RUNBOOK.md).
+
+`phase5_correction_drive.ipynb` performs the single bounded correction allowed
+after the measured `revise_training` verdict. It starts both the teacher and
+student from the preserved step-500 checkpoint, targets only
+`route_target_21`, saves to a separate workspace, and automatically reruns the
+unchanged acceptance gate after the full correction. See
+[`../docs/PHASE5_CORRECTION_RUNBOOK.md`](../docs/PHASE5_CORRECTION_RUNBOOK.md).

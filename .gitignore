@@ -19,9 +19,14 @@ phase4_smoke_artifacts.zip
 phase5_student.zip
 phase5_smoke_student.zip
 phase5_evaluation_artifacts.zip
+phase5_corrected_student.zip
+phase5_correction_smoke_student.zip
+phase5_correction_evaluation_artifacts.zip
 /phase4_smoke/
 /phase4/
+/phase5_evaluation/
 /data/phase5_train.jsonl
+/data/phase5_correction_train.jsonl
 /checkpoint-step-*/
 artifacts/
 models/
