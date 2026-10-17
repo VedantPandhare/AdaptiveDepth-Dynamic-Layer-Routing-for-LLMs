@@ -2,15 +2,36 @@ from __future__ import annotations
 
 import pytest
 import torch
+from transformers import Qwen2Config, Qwen2ForCausalLM
 
 from adaptivedepth.config import Phase6CalibrationSettings, load_phase6_settings
-from adaptivedepth.routes import RouteLibrary
+from adaptivedepth.model.routed_model import RoutedCausalLM
+from adaptivedepth.routes import RouteDefinition, RouteLibrary
 from adaptivedepth.routing.dataset import (
     build_phase6_report,
+    collect_phase6_dataset,
     label_route_safety,
     prompt_features,
     response_regret_metrics,
 )
+from adaptivedepth.training.data import TrainingExample
+
+
+class Phase6TinyTokenizer:
+    chat_template = None
+    pad_token_id = 0
+    eos_token_id = None
+
+    def __call__(self, text: str, return_tensors=None, max_length=32, **_kwargs):
+        ids = list(range(1, min(len(text.split()), max_length - 1) + 1)) or [1]
+        if return_tensors == "pt":
+            values = torch.tensor([ids], dtype=torch.long)
+            return {"input_ids": values, "attention_mask": torch.ones_like(values)}
+        return {"input_ids": ids}
+
+    def decode(self, token_ids, skip_special_tokens: bool = True) -> str:
+        assert skip_special_tokens
+        return " ".join(str(int(token)) for token in token_ids)
 
 
 def test_phase6_configs_select_only_the_confirmed_near_miss_route() -> None:
@@ -95,3 +116,48 @@ def test_phase6_gate_requires_both_router_classes_and_latency() -> None:
     report = build_phase6_report(experiment, settings)
     assert report["verdict"] == "revise_phase6"
     assert not report["checks"]["minimum_unsafe_examples"]
+
+
+def test_tiny_phase6_collection_writes_resumable_artifacts(tmp_path) -> None:
+    config = Qwen2Config(
+        vocab_size=32,
+        hidden_size=16,
+        intermediate_size=32,
+        num_hidden_layers=4,
+        num_attention_heads=4,
+        num_key_value_heads=2,
+        max_position_embeddings=64,
+    )
+    routed = RoutedCausalLM(Qwen2ForCausalLM(config).eval(), "model.layers")
+    dataset = tmp_path / "calibration.jsonl"
+    dataset.write_text(
+        '{"instruction":"Name a color","response":"Blue"}\n',
+        encoding="utf-8",
+    )
+    workspace = tmp_path / "phase6"
+    experiment, report = collect_phase6_dataset(
+        routed_model=routed,
+        tokenizer=Phase6TinyTokenizer(),
+        device=torch.device("cpu"),
+        model_id="tiny-qwen",
+        dataset_path=dataset,
+        examples=[TrainingExample(instruction="Name a color", response="Blue")],
+        route=RouteDefinition(route_id="tiny-route", active_layers=[0, 2, 3]),
+        settings=Phase6CalibrationSettings(
+            max_seq_length=32,
+            max_new_tokens=2,
+            warmup_runs=0,
+            min_examples=1,
+            min_safe_examples=1,
+            min_unsafe_examples=1,
+        ),
+        workspace=workspace,
+        workdir=tmp_path,
+        progress=lambda _message: None,
+    )
+    assert experiment["status"] == "completed"
+    assert len(experiment["records"]) == 1
+    assert report["valid_examples"] == 1
+    assert (workspace / "experiment.json").exists()
+    assert (workspace / "router_dataset.jsonl").exists()
+    assert (workspace / "gate.md").exists()
