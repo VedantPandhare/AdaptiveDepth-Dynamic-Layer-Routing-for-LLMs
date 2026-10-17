@@ -35,3 +35,8 @@ evaluation set, and produces the Phase 5 acceptance gate. It supports a local
 checkpoint directory, an uploaded inference ZIP, or a Hugging Face model ID.
 See
 [`../docs/PHASE5_EVALUATION_RUNBOOK.md`](../docs/PHASE5_EVALUATION_RUNBOOK.md).
+
+`phase5_post_training_eval_drive.ipynb` is the recommended Colab variant when
+the trained checkpoint folder is stored in Google Drive. It validates the
+folder, copies the checkpoint to Colab local disk before inference, and copies
+the final gate artifacts back to `MyDrive/AdaptiveDepth-results`.

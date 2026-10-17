@@ -45,3 +45,12 @@ measured library rather than newly compiled candidates.
 
 The experiment is resumable after each completed route when the runtime,
 checkpoint, dataset, configuration, and repository revision remain unchanged.
+
+## Google Drive variant
+
+When browser upload truncates the approximately 1.9 GB model archive, use
+`notebooks/phase5_post_training_eval_drive.ipynb`. Upload the complete
+`checkpoint-step-000500` folder to My Drive, edit `DRIVE_CHECKPOINT` if the
+folder is nested, and run the notebook. It copies the checkpoint to Colab local
+disk for inference and saves the evaluation ZIP and gate reports under
+`MyDrive/AdaptiveDepth-results`.
