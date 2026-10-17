@@ -18,6 +18,7 @@ from adaptivedepth.config import (
     load_evaluation_settings,
     load_phase5_evaluation_settings,
     load_phase5_settings,
+    load_phase6_settings,
     load_project_settings,
 )
 from adaptivedepth.routes import RouteLibrary
@@ -630,6 +631,71 @@ def run_phase5_evaluation_command(
     save_post_training_report(gate, gate_json_path, gate_markdown_path)
     typer.echo(f"Phase 5 post-training verdict: {gate['verdict']}")
     typer.echo(f"Saved evaluation artifacts under {workspace}")
+
+
+@app.command("prepare-phase6-data")
+def prepare_phase6_data_command(
+    output: Annotated[Path, typer.Option()] = Path("data/phase6_calibration.jsonl"),
+    max_examples: Annotated[int, typer.Option(min=1)] = 200,
+    skip_examples: Annotated[int, typer.Option(min=0)] = 2300,
+    seed: Annotated[int, typer.Option()] = 17,
+) -> None:
+    """Prepare held-out English prompts for compact route-risk collection."""
+
+    from adaptivedepth.training.prepare import prepare_dolly_dataset
+
+    count = prepare_dolly_dataset(
+        output,
+        max_examples=max_examples,
+        seed=seed,
+        skip_examples=skip_examples,
+    )
+    typer.echo(f"Saved {count} held-out Phase 6 examples to {output}")
+
+
+@app.command("run-phase6")
+def run_phase6_command(
+    checkpoint: Annotated[Path, typer.Option(exists=True, file_okay=False)],
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase6_t4.yaml"),
+    route_file: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase6_route.yaml"),
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("data/phase6_calibration.jsonl"),
+    workspace: Annotated[Path, typer.Option()] = Path("experiments/phase6"),
+    resume: Annotated[bool, typer.Option("--resume/--no-resume")] = True,
+) -> None:
+    """Collect a compact full-vs-route regret dataset for the application router."""
+
+    from adaptivedepth.model.loading import load_model
+    from adaptivedepth.routing.dataset import collect_phase6_dataset
+    from adaptivedepth.training import load_training_examples
+
+    settings = load_phase6_settings(config)
+    routes = RouteLibrary.load(route_file)
+    if len(routes.routes) != 1:
+        raise typer.BadParameter(
+            "Phase 6 requires exactly one experimental fast route",
+            param_hint="--route-file",
+        )
+    checkpoint_path = checkpoint.resolve()
+    model_settings = settings.model.model_copy(
+        update={"model_id": str(checkpoint_path), "local_files_only": True}
+    )
+    routed_model, tokenizer, device = load_model(model_settings)
+    _experiment, report = collect_phase6_dataset(
+        routed_model=routed_model,
+        tokenizer=tokenizer,
+        device=device,
+        model_id=str(checkpoint_path),
+        dataset_path=dataset,
+        examples=load_training_examples(dataset),
+        route=routes.routes[0],
+        settings=settings.calibration,
+        workspace=workspace,
+        resume=resume,
+        workdir=Path.cwd(),
+        progress=typer.echo,
+    )
+    typer.echo(f"Phase 6 verdict: {report['verdict']}")
+    typer.echo(f"Saved Phase 6 artifacts under {workspace}")
 
 
 if __name__ == "__main__":

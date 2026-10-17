@@ -89,14 +89,19 @@ def save_training_examples(examples: list[TrainingExample], output: str | Path) 
 
 
 def prepare_dolly_dataset(
-    output: str | Path, max_examples: int = 2000, seed: int = 17
+    output: str | Path,
+    max_examples: int = 2000,
+    seed: int = 17,
+    skip_examples: int = 0,
 ) -> int:
     try:
         from datasets import load_dataset
     except ImportError as error:
         raise RuntimeError("install the data extra with: pip install -e '.[data]'") from error
     dataset = load_dataset("databricks/databricks-dolly-15k", split="train")
-    examples = normalize_dolly_records(dataset, max_examples, seed)
+    examples = normalize_dolly_records(
+        dataset, max_examples, seed, skip_examples=skip_examples
+    )
     save_training_examples(examples, output)
     return len(examples)
 

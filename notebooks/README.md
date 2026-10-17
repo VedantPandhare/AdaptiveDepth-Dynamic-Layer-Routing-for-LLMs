@@ -48,9 +48,8 @@ student from the preserved step-500 checkpoint, targets only
 unchanged acceptance gate after the full correction. See
 [`../docs/PHASE5_CORRECTION_RUNBOOK.md`](../docs/PHASE5_CORRECTION_RUNBOOK.md).
 
-`phase5_correction_drive.ipynb` performs the single bounded correction allowed
-after the measured `revise_training` verdict. It starts both the teacher and
-student from the preserved step-500 checkpoint, targets only
-`route_target_21`, saves to a separate workspace, and automatically reruns the
-unchanged acceptance gate after the full correction. See
-[`../docs/PHASE5_CORRECTION_RUNBOOK.md`](../docs/PHASE5_CORRECTION_RUNBOOK.md).
+`phase6_router_dataset_drive.ipynb` builds the compact application-track
+route-regret dataset from the corrected checkpoint. It compares the near-miss
+21-layer route with full depth, assigns predetermined safe/fallback labels, and
+writes a Phase 7 readiness gate. See
+[`../docs/PHASE6_RUNBOOK.md`](../docs/PHASE6_RUNBOOK.md).

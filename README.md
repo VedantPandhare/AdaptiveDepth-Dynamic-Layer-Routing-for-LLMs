@@ -12,10 +12,10 @@ probe-and-restart fallback rather than unsafe mid-generation layer activation.
 
 ## Current milestone
 
-The software implementation is at approximately **49%** of the strengthened
-design. Phase 4 and the first Phase 5 training/evaluation cycle are complete on
-a T4. A single targeted Phase 5 correction is implemented for the near-passing
-21-layer route.
+The software implementation is at approximately **55%** of the strengthened
+design. Phase 5 training, correction, and stabilized confirmation are complete
+on a T4. The compact application-track Phase 6 route-regret collector is ready
+for its cloud run.
 
 ## Implemented foundation
 
@@ -36,6 +36,8 @@ a T4. A single targeted Phase 5 correction is implemented for the near-passing
 - Frozen-teacher/trainable-student route-aware distillation with deterministic
   sampling and atomic resumable checkpoints.
 - Separate English training-data preparation and a Phase 5 T4 notebook.
+- A resumable compact full-vs-route regret collector with predetermined
+  safety labels and a Phase 7 readiness gate.
 - Offline unit tests using a toy causal transformer.
 
 See [implementation status](docs/IMPLEMENTATION_STATUS.md) for the phase-level
@@ -155,6 +157,29 @@ Run the bounded correction from the preserved checkpoint with
 [`notebooks/phase5_correction_drive.ipynb`](notebooks/phase5_correction_drive.ipynb).
 Its rationale, strict stop rule, and equivalent CLI commands are in the
 [`Phase 5 correction runbook`](docs/PHASE5_CORRECTION_RUNBOOK.md).
+
+The stabilized confirmation still rejects every static route. For the
+application track, Phase 6 now tests whether the confirmed 21-layer near miss
+can be used selectively with full depth as the mandatory fallback. Run it with
+[`notebooks/phase6_router_dataset_drive.ipynb`](notebooks/phase6_router_dataset_drive.ipynb)
+and see the [`Phase 6 runbook`](docs/PHASE6_RUNBOOK.md).
+
+Equivalent Phase 6 CLI workflow:
+
+```powershell
+adaptivedepth prepare-phase6-data `
+  --output data/phase6_calibration.jsonl `
+  --max-examples 200 `
+  --skip-examples 2300
+
+adaptivedepth run-phase6 `
+  --checkpoint checkpoint-step-000100 `
+  --config configs/phase6_t4.yaml `
+  --route-file configs/phase6_route.yaml `
+  --dataset data/phase6_calibration.jsonl `
+  --workspace experiments/phase6 `
+  --resume
+```
 
 The final roadmap also includes a required
 [interactive prompt demonstration](docs/DEMO_APPLICATION_SPEC.md) backed by the

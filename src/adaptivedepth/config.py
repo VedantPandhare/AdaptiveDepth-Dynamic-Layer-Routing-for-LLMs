@@ -104,6 +104,33 @@ class Phase5EvaluationSettings(BaseModel):
     max_teacher_divergence: float = Field(default=0.50, ge=0)
 
 
+class Phase6CalibrationSettings(BaseModel):
+    """Compact route-regret collection settings for the application track."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_seq_length: int = Field(default=128, ge=16, le=2048)
+    max_new_tokens: int = Field(default=16, ge=1, le=256)
+    warmup_runs: int = Field(default=4, ge=0)
+    distillation_temperature: float = Field(default=1.0, gt=0)
+    max_teacher_kl: float = Field(default=0.50, ge=0)
+    max_reference_loss_regret: float = Field(default=0.15, ge=0)
+    min_token_agreement: float = Field(default=0.75, ge=0, le=1)
+    min_examples: int = Field(default=150, ge=1)
+    min_safe_examples: int = Field(default=20, ge=1)
+    min_unsafe_examples: int = Field(default=20, ge=1)
+    min_median_latency_reduction: float = Field(default=0.10, ge=0, lt=1)
+
+
+class Phase6Settings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: ModelSettings = Field(default_factory=ModelSettings)
+    calibration: Phase6CalibrationSettings = Field(
+        default_factory=Phase6CalibrationSettings
+    )
+
+
 def _load_yaml(path: str | Path) -> dict:
     with Path(path).open("r", encoding="utf-8") as handle:
         value = yaml.safe_load(handle)
@@ -128,3 +155,7 @@ def load_phase5_settings(path: str | Path) -> Phase5Settings:
 
 def load_phase5_evaluation_settings(path: str | Path) -> Phase5EvaluationSettings:
     return Phase5EvaluationSettings.model_validate(_load_yaml(path))
+
+
+def load_phase6_settings(path: str | Path) -> Phase6Settings:
+    return Phase6Settings.model_validate(_load_yaml(path))
