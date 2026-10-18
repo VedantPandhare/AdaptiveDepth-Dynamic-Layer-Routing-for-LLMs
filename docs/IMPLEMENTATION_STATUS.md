@@ -3,11 +3,10 @@
 The design memo defines eleven implementation phases. Progress is counted by
 working, tested capabilities—not by files created.
 
-Current implementation milestone: **approximately 70%**. This measures tested
-software capabilities plus completed cloud execution. The response-preserving
-Phase 6.1 collection and the first leakage-controlled multi-route Phase 7.1
-evaluation are complete. The router gate returned `revise_router`, so its
-artifact remains disabled.
+Current implementation milestone: **approximately 80%**. Phase 7.2 now has a
+viable development policy and Phase 8 has a working rescue predictor. The
+results still reuse Phase 6.1 data, so both artifacts remain fail-closed until
+fresh combined validation and Phase 9 runtime measurement.
 
 | Phase | Capability | Status |
 |---:|---|---|
@@ -17,8 +16,8 @@ artifact remains disabled.
 | 4 | Static route evaluation and go/no-go gate | Complete on T4; valid speed-quality frontier measured, verdict `revise_routes` |
 | 5 | Route-aware robustness training | Complete; corrected full model retained quality, but stabilized static gate remains `revise_training` |
 | 6 | Route-regret dataset generation | Complete; Phase 6.1 produced 400 response-preserving examples for Routes 20-23 and passed readiness |
-| 7 | Calibrated risk router | Multi-route Phase 7.1 implemented and evaluated; locked verdict `revise_router`, artifact disabled |
-| 8 | Rescue predictor | Not started |
+| 7 | Calibrated risk router | Phase 7.2 correction passes development policy checks; calibration is provisional and artifact disabled |
+| 8 | Rescue predictor | Implemented and development-evaluated; passed gate, pending fresh validation |
 | 9 | Probe-and-restart fallback runtime | Not started |
 | 10 | End-to-end benchmark | Not started |
 | 11 | Required interactive prompt demonstration | Specification locked; implementation follows the completed routing and fallback runtime |
@@ -35,13 +34,13 @@ tested without downloading it; real experiment commands load it only when run.
 ## What counts as the next milestone
 
 Phase 6.1 corrected the token-starved labels and yielded 400 valid examples.
-The first locked Phase 7.1 run enabled development thresholds for Routes 20
-and 23, then achieved 72.7% held-out safe precision, 13.8% coverage, and 1.8%
-gross latency reduction. Precision and calibration missed the locked gate, so
-the saved router fails closed. Phase 8 must not activate routing from this
-artifact. Any correction must be evaluated on fresh untouched examples rather
-than tuning against the inspected holdout. See
-[`PHASE71_RUNBOOK.md`](PHASE71_RUNBOOK.md).
+Phase 7.2 reaches 80% development precision, 5% coverage, and 0.7% gross
+latency reduction with Routes 20 and 23, but Route 23 calibration remains over
+the locked bound. Phase 8 then evaluates 1,600 prompt-route outputs with
+prompt-grouped folds; on the 20 router candidates it accepts 70% at 100%
+observed precision and rescues every observed unsafe candidate. These small,
+reused development samples require fresh validation. See
+[`PHASE72_PHASE8_RUNBOOK.md`](PHASE72_PHASE8_RUNBOOK.md).
 
 The final project includes a required interactive application where a user
 enters a prompt and sees the generated answer, selected route, active/skipped

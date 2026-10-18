@@ -12,11 +12,11 @@ probe-and-restart fallback rather than unsafe mid-generation layer activation.
 
 ## Current milestone
 
-The software implementation is at approximately **70%** of the strengthened
-design. Phase 6.1 produced 400 response-preserving, four-route examples on a
-T4, and the first leakage-controlled Phase 7.1 multi-route run completed. Its
-conservative verdict is `revise_router`, so adaptive routing remains disabled
-until correction.
+The software implementation is at approximately **80%** of the strengthened
+design. Phase 7.2 corrected the multi-route development policy, and the Phase
+8 rescue predictor passed its development gate. Both artifacts remain disabled
+until a fresh validation set and the Phase 9 probe-and-restart runtime confirm
+the combined policy.
 
 ## Implemented foundation
 
@@ -44,6 +44,8 @@ until correction.
   serialization.
 - Response-preserving multi-route regret collection for Routes 20-23 and a
   calibrated fastest-confident Phase 7.1 policy with full-depth fallback.
+- A shared-feature Phase 7.2 correction with joint route thresholds and a
+  prompt-grouped Phase 8 post-route rescue predictor.
 - Offline unit tests using a toy causal transformer.
 
 See [implementation status](docs/IMPLEMENTATION_STATUS.md) for the phase-level

@@ -214,6 +214,44 @@ class Phase71RouterSettings(BaseModel):
         return self
 
 
+class Phase72RouterSettings(BaseModel):
+    """Development settings for the shared-feature multi-route correction."""
+
+    model_config = ConfigDict(extra="forbid")
+    seed: int = 17
+    outer_cv_folds: int = Field(default=5, ge=2, le=10)
+    calibration_cv_folds: int = Field(default=3, ge=2, le=10)
+    calibration_method: Literal["sigmoid", "isotonic"] = "sigmoid"
+    word_features: int = Field(default=4096, ge=256)
+    char_features: int = Field(default=4096, ge=256)
+    logistic_c: float = Field(default=1.0, gt=0)
+    threshold_search_trials: int = Field(default=200000, ge=1000)
+    max_dense_route_candidates: int = Field(default=60, ge=10)
+    target_safe_precision: float = Field(default=0.80, gt=0, le=1)
+    min_policy_coverage: float = Field(default=0.05, gt=0, lt=1)
+    min_selected_routes: int = Field(default=2, ge=1)
+    min_gross_latency_reduction: float = Field(default=0.005, ge=0, lt=1)
+    max_expected_calibration_error: float = Field(default=0.15, ge=0, le=1)
+    max_brier_score: float = Field(default=0.20, ge=0, le=1)
+    calibration_bins: int = Field(default=10, ge=2, le=50)
+
+
+class Phase8RescueSettings(BaseModel):
+    """Development settings for the post-route rescue predictor."""
+
+    model_config = ConfigDict(extra="forbid")
+    seed: int = 17
+    group_cv_folds: int = Field(default=5, ge=2, le=10)
+    word_features: int = Field(default=4096, ge=256)
+    char_features: int = Field(default=4096, ge=256)
+    logistic_c: float = Field(default=1.0, gt=0)
+    target_accept_precision: float = Field(default=0.90, gt=0, le=1)
+    min_accept_coverage: float = Field(default=0.10, gt=0, lt=1)
+    min_rescue_recall: float = Field(default=0.90, gt=0, le=1)
+    min_candidate_examples: int = Field(default=15, ge=1)
+    calibration_bins: int = Field(default=10, ge=2, le=50)
+
+
 def _load_yaml(path: str | Path) -> dict:
     with Path(path).open("r", encoding="utf-8") as handle:
         value = yaml.safe_load(handle)
@@ -254,3 +292,11 @@ def load_phase7_settings(path: str | Path) -> Phase7RouterSettings:
 
 def load_phase71_settings(path: str | Path) -> Phase71RouterSettings:
     return Phase71RouterSettings.model_validate(_load_yaml(path))
+
+
+def load_phase72_settings(path: str | Path) -> Phase72RouterSettings:
+    return Phase72RouterSettings.model_validate(_load_yaml(path))
+
+
+def load_phase8_settings(path: str | Path) -> Phase8RescueSettings:
+    return Phase8RescueSettings.model_validate(_load_yaml(path))

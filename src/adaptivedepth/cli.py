@@ -21,6 +21,8 @@ from adaptivedepth.config import (
     load_phase6_settings,
     load_phase61_settings,
     load_phase71_settings,
+    load_phase72_settings,
+    load_phase8_settings,
     load_phase7_settings,
     load_project_settings,
 )
@@ -824,6 +826,45 @@ def train_phase71_command(
     )
     typer.echo(f"Phase 7.1 verdict: {report['verdict']}")
     typer.echo(f"Router: {output / 'router.joblib'}")
+    typer.echo(f"Report: {output / 'gate.md'}")
+
+
+@app.command("train-phase72")
+def train_phase72_command(
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("phase61/router_dataset.jsonl"),
+    phase61_gate: Annotated[Path, typer.Option(exists=True)] = Path("phase61/gate.json"),
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase72.yaml"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase72"),
+) -> None:
+    """Correct the multi-route router with shared hashed features and joint thresholds."""
+    from adaptivedepth.routing.phase72_router import train_phase72_router
+
+    report = train_phase72_router(
+        dataset_path=dataset, phase61_gate_path=phase61_gate,
+        settings=load_phase72_settings(config), output_dir=output,
+        config_path=config,
+    )
+    typer.echo(f"Phase 7.2 verdict: {report['verdict']}")
+    typer.echo(f"Report: {output / 'gate.md'}")
+
+
+@app.command("train-phase8")
+def train_phase8_command(
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("phase61/router_dataset.jsonl"),
+    phase72_report: Annotated[Path, typer.Option(exists=True)] = Path("experiments/phase72/report.json"),
+    phase72_oof: Annotated[Path, typer.Option(exists=True)] = Path("experiments/phase72/oof_predictions.jsonl"),
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase8.yaml"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase8"),
+) -> None:
+    """Train the Phase 8 post-route rescue predictor without GPU compute."""
+    from adaptivedepth.routing.rescue import train_phase8_rescue
+
+    report = train_phase8_rescue(
+        dataset_path=dataset, phase72_report_path=phase72_report,
+        phase72_oof_path=phase72_oof, settings=load_phase8_settings(config),
+        output_dir=output, config_path=config,
+    )
+    typer.echo(f"Phase 8 verdict: {report['verdict']}")
     typer.echo(f"Report: {output / 'gate.md'}")
 
 
