@@ -203,6 +203,14 @@ The artifact therefore fails closed to full depth. See the
 [`Phase 7 runbook`](docs/PHASE7_RUNBOOK.md) and its
 [Drive-based CPU notebook](notebooks/phase7_router_training_drive.ipynb).
 
+Inspection then found that 31% of the original Phase 6 examples retained only
+one reference token after long-prompt truncation. Phase 6.1 corrects this with
+response-preserving encoding and one combined 400-prompt comparison of Routes
+20, 21, 22, and 23 against a reused full-model result. Run the corrected
+collection with
+[`notebooks/phase61_multiroute_drive.ipynb`](notebooks/phase61_multiroute_drive.ipynb)
+and see the [`Phase 6.1 runbook`](docs/PHASE61_RUNBOOK.md).
+
 The final roadmap also includes a required
 [interactive prompt demonstration](docs/DEMO_APPLICATION_SPEC.md) backed by the
 real router and fallback runtime.

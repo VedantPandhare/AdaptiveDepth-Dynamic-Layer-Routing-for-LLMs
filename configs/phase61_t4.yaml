@@ -1,0 +1,23 @@
+model:
+  model_id: Qwen/Qwen2.5-0.5B-Instruct
+  device: auto
+  dtype: float16
+  trust_remote_code: false
+  local_files_only: true
+  layer_path: null
+calibration:
+  max_seq_length: 128
+  response_token_budget: 16
+  min_generation_token_jaccard: 0.50
+  max_new_tokens: 16
+  warmup_runs: 6
+  distillation_temperature: 1.0
+  max_teacher_kl: 0.50
+  max_reference_loss_regret: 0.15
+  min_token_agreement: 0.75
+  min_examples: 300
+  min_safe_examples: 20
+  min_unsafe_examples: 20
+  min_median_latency_reduction: 0.10
+  min_eligible_routes: 2
+  min_route_latency_reduction: 0.02

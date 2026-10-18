@@ -36,6 +36,11 @@ phase6_artifacts.zip
 /data/phase5_train.jsonl
 /data/phase5_correction_train.jsonl
 /data/phase6_calibration.jsonl
+/data/phase61_calibration.jsonl
+/data/phase61_calibration_smoke.jsonl
+/phase61/
+phase61_artifacts.zip
+phase61_smoke_artifacts.zip
 /phase6_artifacts/
 /phase6/
 phase7_artifacts.zip

@@ -19,6 +19,7 @@ from adaptivedepth.config import (
     load_phase5_evaluation_settings,
     load_phase5_settings,
     load_phase6_settings,
+    load_phase61_settings,
     load_phase7_settings,
     load_project_settings,
 )
@@ -697,6 +698,76 @@ def run_phase6_command(
     )
     typer.echo(f"Phase 6 verdict: {report['verdict']}")
     typer.echo(f"Saved Phase 6 artifacts under {workspace}")
+
+
+@app.command("prepare-phase61-data")
+def prepare_phase61_data_command(
+    output: Annotated[Path, typer.Option()] = Path("data/phase61_calibration.jsonl"),
+    max_examples: Annotated[int, typer.Option(min=1)] = 400,
+    skip_examples: Annotated[int, typer.Option(min=0)] = 2500,
+    seed: Annotated[int, typer.Option()] = 17,
+) -> None:
+    """Prepare fresh held-out prompts for response-preserving multi-route collection."""
+
+    from adaptivedepth.training.prepare import prepare_dolly_dataset
+
+    count = prepare_dolly_dataset(
+        output,
+        max_examples=max_examples,
+        seed=seed,
+        skip_examples=skip_examples,
+    )
+    typer.echo(f"Saved {count} held-out Phase 6.1 examples to {output}")
+
+
+@app.command("run-phase61")
+def run_phase61_command(
+    checkpoint: Annotated[Path, typer.Option(exists=True, file_okay=False)],
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase61_t4.yaml"),
+    routes_file: Annotated[Path, typer.Option(exists=True)] = Path(
+        "configs/phase61_routes.yaml"
+    ),
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path(
+        "data/phase61_calibration.jsonl"
+    ),
+    workspace: Annotated[Path, typer.Option()] = Path("experiments/phase61"),
+    resume: Annotated[bool, typer.Option("--resume/--no-resume")] = True,
+) -> None:
+    """Collect response-preserving regret labels for four reduced routes."""
+
+    from adaptivedepth.model.loading import load_model
+    from adaptivedepth.routing.multiroute_dataset import collect_phase61_dataset
+    from adaptivedepth.training import load_training_examples
+
+    settings = load_phase61_settings(config)
+    routes = RouteLibrary.load(routes_file)
+    layer_counts = {len(route.active_layers) for route in routes.routes}
+    if len(routes.routes) != 4 or layer_counts != {20, 21, 22, 23}:
+        raise typer.BadParameter(
+            "Phase 6.1 requires exactly the 20-, 21-, 22-, and 23-layer routes",
+            param_hint="--routes-file",
+        )
+    checkpoint_path = checkpoint.resolve()
+    model_settings = settings.model.model_copy(
+        update={"model_id": str(checkpoint_path), "local_files_only": True}
+    )
+    routed_model, tokenizer, device = load_model(model_settings)
+    _experiment, report = collect_phase61_dataset(
+        routed_model=routed_model,
+        tokenizer=tokenizer,
+        device=device,
+        model_id=str(checkpoint_path),
+        dataset_path=dataset,
+        examples=load_training_examples(dataset),
+        routes=routes.routes,
+        settings=settings.calibration,
+        workspace=workspace,
+        resume=resume,
+        workdir=Path.cwd(),
+        progress=typer.echo,
+    )
+    typer.echo(f"Phase 6.1 verdict: {report['verdict']}")
+    typer.echo(f"Saved Phase 6.1 artifacts under {workspace}")
 
 
 @app.command("train-phase7")

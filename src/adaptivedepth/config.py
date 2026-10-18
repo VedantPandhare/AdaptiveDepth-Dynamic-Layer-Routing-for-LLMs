@@ -131,6 +131,30 @@ class Phase6Settings(BaseModel):
     )
 
 
+class Phase61CalibrationSettings(Phase6CalibrationSettings):
+    """Multi-route regret collection with response-preserving supervision."""
+
+    response_token_budget: int = Field(default=16, ge=2, le=256)
+    min_generation_token_jaccard: float = Field(default=0.50, ge=0, le=1)
+    min_eligible_routes: int = Field(default=2, ge=1)
+    min_route_latency_reduction: float = Field(default=0.02, ge=0, lt=1)
+
+    @model_validator(mode="after")
+    def validate_response_budget(self) -> "Phase61CalibrationSettings":
+        if self.response_token_budget >= self.max_seq_length:
+            raise ValueError("response_token_budget must be below max_seq_length")
+        return self
+
+
+class Phase61Settings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: ModelSettings = Field(default_factory=ModelSettings)
+    calibration: Phase61CalibrationSettings = Field(
+        default_factory=Phase61CalibrationSettings
+    )
+
+
 class Phase7RouterSettings(BaseModel):
     """Leakage-controlled prompt-risk router training settings."""
 
@@ -188,6 +212,10 @@ def load_phase5_evaluation_settings(path: str | Path) -> Phase5EvaluationSetting
 
 def load_phase6_settings(path: str | Path) -> Phase6Settings:
     return Phase6Settings.model_validate(_load_yaml(path))
+
+
+def load_phase61_settings(path: str | Path) -> Phase61Settings:
+    return Phase61Settings.model_validate(_load_yaml(path))
 
 
 def load_phase7_settings(path: str | Path) -> Phase7RouterSettings:

@@ -24,6 +24,17 @@ class EncodedExample:
     labels: list[int]
 
 
+@dataclass(frozen=True)
+class ResponsePreservingEncoding:
+    input_ids: list[int]
+    labels: list[int]
+    prompt_token_count: int
+    available_response_tokens: int
+    used_response_tokens: int
+    prompt_was_truncated: bool
+    response_was_truncated: bool
+
+
 def sha256_file(path: str | Path) -> str:
     digest = hashlib.sha256()
     with Path(path).open("rb") as handle:
@@ -95,6 +106,82 @@ def encode_example(tokenizer: Any, example: TrainingExample, max_length: int) ->
     if all(label == -100 for label in labels[1:]):
         raise ValueError("training example was truncated before its response")
     return EncodedExample(input_ids=input_ids, labels=labels)
+
+
+def _untruncated_token_ids(
+    tokenizer: Any, text: str, add_special_tokens: bool
+) -> list[int]:
+    encoded = tokenizer(
+        text,
+        add_special_tokens=add_special_tokens,
+        truncation=False,
+    )
+    values = encoded["input_ids"]
+    if isinstance(values, torch.Tensor):
+        values = values.tolist()
+    if values and isinstance(values[0], list):
+        values = values[0]
+    return [int(value) for value in values]
+
+
+def _common_prefix_length(left: list[int], right: list[int]) -> int:
+    common = 0
+    for left_token, right_token in zip(left, right):
+        if left_token != right_token:
+            break
+        common += 1
+    return common
+
+
+def _truncate_prompt_middle(tokens: list[int], budget: int) -> list[int]:
+    if len(tokens) <= budget:
+        return tokens
+    if budget < 2:
+        raise ValueError("response reservation leaves no usable prompt budget")
+    head = (budget + 1) // 2
+    tail = budget - head
+    return tokens[:head] + (tokens[-tail:] if tail else [])
+
+
+def encode_example_preserving_response(
+    tokenizer: Any,
+    example: TrainingExample,
+    max_length: int,
+    response_token_budget: int,
+) -> ResponsePreservingEncoding:
+    """Encode an example without allowing a long prompt to erase its response.
+
+    Up to ``response_token_budget`` available response tokens are retained.
+    When the prompt is too long, its middle is removed so both the instruction
+    prefix and the assistant-generation suffix remain represented.
+    """
+    if response_token_budget < 1 or response_token_budget >= max_length:
+        raise ValueError("response_token_budget must be between 1 and max_length - 1")
+    prompt, full, add_special_tokens = _render_texts(tokenizer, example)
+    prompt_ids = _untruncated_token_ids(tokenizer, prompt, add_special_tokens)
+    full_ids = _untruncated_token_ids(tokenizer, full, add_special_tokens)
+    common = _common_prefix_length(prompt_ids, full_ids)
+    if common == 0:
+        raise ValueError("prompt and completed example have no common token prefix")
+    response_ids = full_ids[common:]
+    if not response_ids:
+        raise ValueError("example has no response tokens")
+
+    used_response = response_ids[:response_token_budget]
+    prompt_budget = max_length - len(used_response)
+    prompt_prefix = full_ids[:common]
+    used_prompt = _truncate_prompt_middle(prompt_prefix, prompt_budget)
+    input_ids = used_prompt + used_response
+    labels = [-100] * len(used_prompt) + used_response
+    return ResponsePreservingEncoding(
+        input_ids=input_ids,
+        labels=labels,
+        prompt_token_count=len(used_prompt),
+        available_response_tokens=len(response_ids),
+        used_response_tokens=len(used_response),
+        prompt_was_truncated=len(used_prompt) < len(prompt_prefix),
+        response_was_truncated=len(used_response) < len(response_ids),
+    )
 
 
 def collate_examples(
