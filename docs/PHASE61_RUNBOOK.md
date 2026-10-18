@@ -57,9 +57,9 @@ dataset but is not declared eligible for Phase 7 routing.
 
 ## Runtime and persistence
 
-If the original 200-example, one-route Phase 6 run took 20 minutes, the
-400-example, four-route Phase 6.1 run should usually take approximately 95–120
-minutes on a T4. Allow up to 2.5 hours for Colab variation.
+The completed 400-example, four-route run took approximately 16.5 minutes on a
+T4. Future runs should normally allow 15-30 minutes, with additional margin for
+Colab provisioning or throttling.
 
 The full workspace is stored directly under
 `MyDrive/AdaptiveDepth-results/phase61_workspace`. Every completed prompt is

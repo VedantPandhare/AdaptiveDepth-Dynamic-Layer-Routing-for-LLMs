@@ -53,3 +53,13 @@ route-regret dataset from the corrected checkpoint. It compares the near-miss
 21-layer route with full depth, assigns predetermined safe/fallback labels, and
 writes a Phase 7 readiness gate. See
 [`../docs/PHASE6_RUNBOOK.md`](../docs/PHASE6_RUNBOOK.md).
+
+`phase61_multiroute_drive.ipynb` replaces the token-starved Phase 6 labels with
+a response-preserving 400-prompt comparison of Routes 20-23. It rotates timing
+order, writes cheapest-safe targets, and stores its resumable workspace in
+Drive. See [`../docs/PHASE61_RUNBOOK.md`](../docs/PHASE61_RUNBOOK.md).
+
+`phase71_multiroute_router_drive.ipynb` trains and evaluates the CPU-only
+fastest-confident policy from `phase61_artifacts.zip`. It packages the fitted
+router and its fail-closed gate without loading an LLM or requiring a GPU. See
+[`../docs/PHASE71_RUNBOOK.md`](../docs/PHASE71_RUNBOOK.md).

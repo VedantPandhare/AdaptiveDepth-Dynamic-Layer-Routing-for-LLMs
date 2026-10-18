@@ -12,10 +12,11 @@ probe-and-restart fallback rather than unsafe mid-generation layer activation.
 
 ## Current milestone
 
-The software implementation is at approximately **65%** of the strengthened
-design. Phase 6 produced 200 route-regret examples on a T4, and the first
-leakage-controlled Phase 7 risk-router run completed. Its conservative verdict
-is `revise_router`, so adaptive routing remains disabled until correction.
+The software implementation is at approximately **70%** of the strengthened
+design. Phase 6.1 produced 400 response-preserving, four-route examples on a
+T4, and the first leakage-controlled Phase 7.1 multi-route run completed. Its
+conservative verdict is `revise_router`, so adaptive routing remains disabled
+until correction.
 
 ## Implemented foundation
 
@@ -41,6 +42,8 @@ is `revise_router`, so adaptive routing remains disabled until correction.
 - A calibrated CPU risk-router trainer with nested out-of-fold threshold
   selection, a locked holdout gate, auditable predictions, and fail-closed
   serialization.
+- Response-preserving multi-route regret collection for Routes 20-23 and a
+  calibrated fastest-confident Phase 7.1 policy with full-depth fallback.
 - Offline unit tests using a toy causal transformer.
 
 See [implementation status](docs/IMPLEMENTATION_STATUS.md) for the phase-level
@@ -210,6 +213,23 @@ response-preserving encoding and one combined 400-prompt comparison of Routes
 collection with
 [`notebooks/phase61_multiroute_drive.ipynb`](notebooks/phase61_multiroute_drive.ipynb)
 and see the [`Phase 6.1 runbook`](docs/PHASE61_RUNBOOK.md).
+
+Phase 6.1 passed with 400 valid examples and all four routes eligible. Train
+the multi-route prompt router locally on CPU:
+
+```powershell
+adaptivedepth train-phase71 `
+  --dataset phase61/router_dataset.jsonl `
+  --phase61-gate phase61/gate.json `
+  --config configs/phase71.yaml `
+  --output experiments/phase71
+```
+
+The first locked Phase 7.1 run returned `revise_router`: held-out precision was
+72.7% against the 80% gate, although coverage and gross latency benefit passed.
+The artifact is disabled and always falls back to full depth. See the
+[`Phase 7.1 runbook`](docs/PHASE71_RUNBOOK.md) and its
+[Drive-based CPU notebook](notebooks/phase71_multiroute_router_drive.ipynb).
 
 The final roadmap also includes a required
 [interactive prompt demonstration](docs/DEMO_APPLICATION_SPEC.md) backed by the
