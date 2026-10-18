@@ -20,6 +20,7 @@ from adaptivedepth.config import (
     load_phase5_settings,
     load_phase6_settings,
     load_phase61_settings,
+    load_phase71_settings,
     load_phase7_settings,
     load_project_settings,
 )
@@ -793,6 +794,35 @@ def train_phase7_command(
         config_path=config,
     )
     typer.echo(f"Phase 7 verdict: {report['verdict']}")
+    typer.echo(f"Router: {output / 'router.joblib'}")
+    typer.echo(f"Report: {output / 'gate.md'}")
+
+
+@app.command("train-phase71")
+def train_phase71_command(
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path(
+        "phase61/router_dataset.jsonl"
+    ),
+    phase61_gate: Annotated[Path, typer.Option(exists=True)] = Path(
+        "phase61/gate.json"
+    ),
+    config: Annotated[Path, typer.Option(exists=True)] = Path(
+        "configs/phase71.yaml"
+    ),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase71"),
+) -> None:
+    """Train and evaluate the conservative Phase 7.1 multi-route router."""
+
+    from adaptivedepth.routing.multiroute_risk_router import train_phase71_router
+
+    report = train_phase71_router(
+        dataset_path=dataset,
+        phase61_gate_path=phase61_gate,
+        settings=load_phase71_settings(config),
+        output_dir=output,
+        config_path=config,
+    )
+    typer.echo(f"Phase 7.1 verdict: {report['verdict']}")
     typer.echo(f"Router: {output / 'router.joblib'}")
     typer.echo(f"Report: {output / 'gate.md'}")
 
