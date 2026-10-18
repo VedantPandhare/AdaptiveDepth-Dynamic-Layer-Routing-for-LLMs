@@ -4,12 +4,36 @@ import numpy as np
 import pytest
 
 from adaptivedepth.config import load_phase72_settings, load_phase8_settings
+from adaptivedepth.routing.phase72_router import route_prompt_phase72
 from adaptivedepth.routing.rescue import _choose_threshold, predict_rescue
 
 
 class _Estimator:
     def predict_proba(self, rows):
         return np.asarray([[0.8, 0.2] for _ in range(rows.shape[0])])
+
+
+def test_disabled_phase72_router_fails_closed() -> None:
+    settings = load_phase72_settings('configs/phase72.yaml')
+    artifact = {
+        'manifest': {
+            'enabled': False, 'phase8_development_allowed': True,
+            'route_order': ['fast'], 'thresholds': {'fast': 0.1},
+            'threshold_found': {'fast': True},
+            'route_definitions': {'fast': {'active_layers': [0, 1]}},
+            'settings': settings.model_dump(mode='json'),
+        },
+        'estimators': {'fast': _Estimator()},
+    }
+    result = route_prompt_phase72(artifact, 'simple prompt', 2)
+    assert result['candidate_decision'] == 'fast'
+    assert result['decision'] == 'full'
+
+    development = route_prompt_phase72(
+        artifact, 'simple prompt', 2, allow_development_candidate=True,
+    )
+    assert development['decision'] == 'fast'
+    assert development['active_layers'] == [0, 1]
 
 
 def test_correction_and_rescue_configs_load() -> None:
