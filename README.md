@@ -13,10 +13,10 @@ probe-and-restart fallback rather than unsafe mid-generation layer activation.
 ## Current milestone
 
 The software implementation is at approximately **80%** of the strengthened
-design. Phase 7.2 corrected the multi-route development policy, and the Phase
-8 rescue predictor passed its development gate. Both artifacts remain disabled
-until a fresh validation set and the Phase 9 probe-and-restart runtime confirm
-the combined policy.
+design. Phase 7.2 and the Phase 8 rescue predictor are implemented, but the
+joint Route 20/23 application gate reaches only 4.25% coverage at the required
+90% precision, versus the 34% target. Both artifacts remain disabled while the
+label/model mismatch is corrected before Phase 9.
 
 ## Implemented foundation
 

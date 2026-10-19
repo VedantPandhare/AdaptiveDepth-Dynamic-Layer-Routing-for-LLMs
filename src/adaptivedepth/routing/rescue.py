@@ -234,6 +234,15 @@ def train_phase8_rescue(
                 'action': 'rescue_to_full' if probability > threshold else 'accept_route',
                 'route_was_safe': bool(row['safe']),
             }, sort_keys=True) + '\n')
+    with (output_dir / 'oof_route_predictions.jsonl').open('w', encoding='utf-8') as handle:
+        for row, probability in zip(rows, oof_probabilities):
+            handle.write(json.dumps({
+                'example_id': row['example_id'],
+                'route_id': row['route_id'],
+                'router_safe_probability': row['safe_probability'],
+                'rescue_probability': float(probability),
+                'route_was_safe': bool(row['safe']),
+            }, sort_keys=True) + '\n')
     return report
 
 

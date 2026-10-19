@@ -33,3 +33,30 @@ rescues every observed unsafe candidate.
 These are development results, not deployment claims. Both artifacts fail
 closed. A fresh prompt set must confirm the combined router-rescue policy, and
 Phase 9 must measure the real cost of short-probe-and-restart execution.
+
+## Two-route application optimization
+
+The application policy is restricted to Route 20, Route 23, and Full. Rebuild
+the complete out-of-fold rescue score file, then run the joint optimizer:
+
+```powershell
+adaptivedepth train-phase8 `
+  --dataset phase61/router_dataset.jsonl `
+  --phase72-report experiments/phase72/report.json `
+  --phase72-oof experiments/phase72/oof_predictions.jsonl `
+  --config configs/phase8.yaml `
+  --output experiments/phase8
+
+adaptivedepth optimize-phase72 `
+  --dataset phase61/router_dataset.jsonl `
+  --router-oof experiments/phase72/oof_predictions.jsonl `
+  --rescue-oof experiments/phase8/oof_route_predictions.jsonl `
+  --config configs/phase72_application.yaml `
+  --output experiments/phase72_application
+```
+
+The locked 400-prompt result is `revise_combined_policy`. At 90% required
+precision, the best searched policy reaches 4.25% coverage. Forcing 34.25%
+coverage yields 47.4% precision and negative projected latency. Threshold
+tuning alone therefore cannot meet the application target; the label/model
+definition must be corrected before collecting a fresh validation set.

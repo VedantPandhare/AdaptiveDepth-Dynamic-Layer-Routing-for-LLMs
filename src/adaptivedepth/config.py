@@ -252,6 +252,29 @@ class Phase8RescueSettings(BaseModel):
     calibration_bins: int = Field(default=10, ge=2, le=50)
 
 
+class Phase72ApplicationSettings(BaseModel):
+    """Joint Route 20/23 candidate and rescue policy optimization."""
+
+    model_config = ConfigDict(extra="forbid")
+    seed: int = 17
+    search_trials: int = Field(default=200000, ge=100)
+    search_batch_size: int = Field(default=2000, ge=100)
+    candidate_routes: list[str] = Field(
+        default_factory=lambda: ["route_fast_20", "route_safe_23"]
+    )
+    target_final_coverage: float = Field(default=0.34, gt=0, lt=1)
+    target_final_precision: float = Field(default=0.90, gt=0, le=1)
+    min_candidate_coverage: float = Field(default=0.40, gt=0, le=1)
+    minimum_projected_latency_reduction: float = Field(default=0.0, ge=0, lt=1)
+    projected_probe_cost_fraction: float = Field(default=0.25, gt=0, le=1)
+
+    @model_validator(mode="after")
+    def validate_routes(self) -> "Phase72ApplicationSettings":
+        if len(self.candidate_routes) != 2 or len(set(self.candidate_routes)) != 2:
+            raise ValueError("candidate_routes must contain exactly two unique routes")
+        return self
+
+
 def _load_yaml(path: str | Path) -> dict:
     with Path(path).open("r", encoding="utf-8") as handle:
         value = yaml.safe_load(handle)
@@ -300,3 +323,7 @@ def load_phase72_settings(path: str | Path) -> Phase72RouterSettings:
 
 def load_phase8_settings(path: str | Path) -> Phase8RescueSettings:
     return Phase8RescueSettings.model_validate(_load_yaml(path))
+
+
+def load_phase72_application_settings(path: str | Path) -> Phase72ApplicationSettings:
+    return Phase72ApplicationSettings.model_validate(_load_yaml(path))

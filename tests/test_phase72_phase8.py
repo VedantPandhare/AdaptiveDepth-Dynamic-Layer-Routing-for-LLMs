@@ -4,6 +4,8 @@ import numpy as np
 import pytest
 
 from adaptivedepth.config import load_phase72_settings, load_phase8_settings
+from adaptivedepth.config import load_phase72_application_settings
+from adaptivedepth.routing.cascade_optimizer import _policy_payload
 from adaptivedepth.routing.phase72_router import route_prompt_phase72
 from adaptivedepth.routing.rescue import _choose_threshold, predict_rescue
 
@@ -41,6 +43,34 @@ def test_correction_and_rescue_configs_load() -> None:
     phase8 = load_phase8_settings('configs/phase8.yaml')
     assert phase72.threshold_search_trials == 200000
     assert phase8.target_accept_precision == pytest.approx(0.90)
+    application = load_phase72_application_settings(
+        'configs/phase72_application.yaml'
+    )
+    assert application.candidate_routes == [
+        'route_fast_20', 'route_safe_23'
+    ]
+    assert application.target_final_coverage == pytest.approx(0.34)
+
+
+def test_cascade_policy_accounts_for_rescue_cost() -> None:
+    payload = _policy_payload(
+        0,
+        np.asarray([[0.5, 0.5, 0.5, 0.5]]),
+        np.asarray([[True, False]]),
+        np.asarray([[False, True]]),
+        np.asarray([[True, False]]),
+        np.asarray([[False, False]]),
+        np.asarray([True, False]),
+        np.asarray([False, True]),
+        np.asarray([100.0, 100.0]),
+        np.asarray([[80.0, 80.0], [90.0, 90.0]]),
+        0.25,
+    )
+    assert payload['candidate_coverage'] == pytest.approx(1.0)
+    assert payload['final_coverage'] == pytest.approx(0.5)
+    assert payload['final_precision'] == pytest.approx(1.0)
+    assert payload['projected_latency_reduction'] == pytest.approx(-0.0125)
+    assert payload['full_probe_latency_reduction'] == pytest.approx(-0.35)
 
 
 def test_rescue_threshold_enforces_precision_and_recall() -> None:

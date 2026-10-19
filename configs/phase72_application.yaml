@@ -1,0 +1,11 @@
+seed: 17
+search_trials: 200000
+search_batch_size: 2000
+candidate_routes:
+  - route_fast_20
+  - route_safe_23
+target_final_coverage: 0.34
+target_final_precision: 0.90
+min_candidate_coverage: 0.40
+minimum_projected_latency_reduction: 0.0
+projected_probe_cost_fraction: 0.25

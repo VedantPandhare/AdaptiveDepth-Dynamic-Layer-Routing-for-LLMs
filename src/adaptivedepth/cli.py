@@ -22,6 +22,7 @@ from adaptivedepth.config import (
     load_phase61_settings,
     load_phase71_settings,
     load_phase72_settings,
+    load_phase72_application_settings,
     load_phase8_settings,
     load_phase7_settings,
     load_project_settings,
@@ -866,6 +867,58 @@ def train_phase8_command(
     )
     typer.echo(f"Phase 8 verdict: {report['verdict']}")
     typer.echo(f"Report: {output / 'gate.md'}")
+
+
+@app.command("optimize-phase72")
+def optimize_phase72_command(
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("phase61/router_dataset.jsonl"),
+    router_oof: Annotated[Path, typer.Option(exists=True)] = Path("experiments/phase72/oof_predictions.jsonl"),
+    rescue_oof: Annotated[Path, typer.Option(exists=True)] = Path("experiments/phase8/oof_route_predictions.jsonl"),
+    config: Annotated[Path, typer.Option(exists=True)] = Path("configs/phase72_application.yaml"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase72_application"),
+) -> None:
+    """Jointly optimize the locked Route 20/23 candidate and rescue policy."""
+    from adaptivedepth.routing.cascade_optimizer import optimize_two_route_cascade
+
+    report = optimize_two_route_cascade(
+        dataset_path=dataset, router_oof_path=router_oof,
+        rescue_oof_path=rescue_oof,
+        settings=load_phase72_application_settings(config),
+        output_dir=output, config_path=config,
+    )
+    typer.echo(f"Phase 7.2 application verdict: {report['verdict']}")
+    typer.echo(f"Report: {output / 'gate.md'}")
+
+
+@app.command("prepare-phase72-label-review")
+def prepare_phase72_label_review_command(
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("phase61/router_dataset.jsonl"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase72_label_review.jsonl"),
+) -> None:
+    """Export ambiguous Route 20/23 labels for semantic review."""
+    from adaptivedepth.routing.application_labels import prepare_application_label_review
+
+    summary = prepare_application_label_review(
+        dataset_path=dataset, output_path=output
+    )
+    typer.echo(json.dumps(summary, indent=2))
+
+
+@app.command("apply-phase72-label-review")
+def apply_phase72_label_review_command(
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path("phase61/router_dataset.jsonl"),
+    judgments: Annotated[Path, typer.Option(exists=True)] = Path("experiments/phase72_label_judgments.jsonl"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase72_application_dataset.jsonl"),
+    minimum_safe_confidence: Annotated[float, typer.Option(min=0.0, max=1.0)] = 0.80,
+) -> None:
+    """Apply complete reviewed judgments and build an application dataset."""
+    from adaptivedepth.routing.application_labels import apply_application_label_review
+
+    summary = apply_application_label_review(
+        dataset_path=dataset, judgments_path=judgments, output_path=output,
+        minimum_safe_confidence=minimum_safe_confidence,
+    )
+    typer.echo(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":
