@@ -120,6 +120,120 @@ def load_review_judgments(path: str | Path) -> dict[str, dict[str, Any]]:
     return judgments
 
 
+def _parse_judge_response(text: str) -> dict[str, Any]:
+    start, end = text.find('{'), text.rfind('}')
+    if start < 0 or end <= start:
+        raise ValueError(f'judge did not return JSON: {text[:160]}')
+    payload = json.loads(text[start:end + 1])
+    if payload.get('verdict') not in {'safe_route', 'full_model'}:
+        raise ValueError('judge verdict must be safe_route or full_model')
+    confidence = float(payload.get('confidence', -1.0))
+    if not 0.0 <= confidence <= 1.0:
+        raise ValueError('judge confidence must be in [0, 1]')
+    reason = str(payload.get('reason', '')).strip()
+    if not reason:
+        raise ValueError('judge reason is required')
+    return {
+        'verdict': payload['verdict'],
+        'confidence': confidence,
+        'reason': reason,
+    }
+
+
+def judge_application_label_review(
+    *,
+    review_path: str | Path,
+    output_path: str | Path,
+    model_id: str = 'Qwen/Qwen2.5-3B-Instruct',
+    max_input_tokens: int = 2048,
+    max_new_tokens: int = 96,
+    resume: bool = True,
+    progress: Any | None = None,
+) -> dict[str, Any]:
+    """Run a conservative reference-assisted semantic judge on a GPU runtime."""
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    review_path, output_path = Path(review_path), Path(output_path)
+    reviews = [
+        json.loads(line) for line in review_path.read_text(encoding='utf-8').splitlines()
+        if line.strip()
+    ]
+    completed: set[str] = set()
+    if output_path.exists() and resume:
+        completed = set(load_review_judgments(output_path))
+    elif output_path.exists():
+        output_path.unlink()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id, torch_dtype='auto', device_map='auto'
+    )
+    model.eval()
+    system = (
+        'You are a conservative answer-quality auditor. Compare a reduced-route '
+        'candidate with the full-model baseline using the prompt and reference. '
+        'Mark safe_route only if the candidate is not materially worse in '
+        'correctness, relevance, completeness, and grounding, and adds no critical '
+        'factual error. Allow harmless paraphrasing and stylistic differences. '
+        'When uncertain choose full_model. Return exactly one JSON object with '
+        'verdict (safe_route or full_model), confidence (0 to 1), and a short reason.'
+    )
+    written = 0
+    with output_path.open('a', encoding='utf-8') as handle:
+        for position, row in enumerate(reviews, start=1):
+            if row['review_key'] in completed:
+                continue
+            user = (
+                f"Task family: {row['task_family']}\n\n"
+                f"PROMPT:\n{row['prompt'][:3000]}\n\n"
+                f"FULL-MODEL BASELINE:\n{row['full_response']}\n\n"
+                f"REDUCED-ROUTE CANDIDATE:\n{row['route_response']}\n\n"
+                f"REFERENCE:\n{row['reference'][:3000]}"
+            )
+            rendered = tokenizer.apply_chat_template(
+                [
+                    {'role': 'system', 'content': system},
+                    {'role': 'user', 'content': user},
+                ],
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            inputs = tokenizer(
+                rendered, return_tensors='pt', truncation=True,
+                max_length=max_input_tokens,
+            ).to(model.device)
+            with torch.inference_mode():
+                generated = model.generate(
+                    **inputs, max_new_tokens=max_new_tokens, do_sample=False,
+                    pad_token_id=tokenizer.eos_token_id,
+                )
+            response = tokenizer.decode(
+                generated[0, inputs['input_ids'].shape[1]:],
+                skip_special_tokens=True,
+            )
+            judgment = _parse_judge_response(response)
+            payload = {
+                'review_key': row['review_key'],
+                'example_id': row['example_id'],
+                'route_id': row['route_id'],
+                **judgment,
+                'reviewer': model_id,
+            }
+            handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + '\n')
+            handle.flush()
+            written += 1
+            if progress:
+                progress(f"Judged {position}/{len(reviews)}: {row['review_key']}")
+    return {
+        'review_examples': len(reviews),
+        'previously_completed': len(completed),
+        'newly_completed': written,
+        'output': str(output_path),
+        'model_id': model_id,
+    }
+
+
 def apply_application_label_review(
     *,
     dataset_path: str | Path,

@@ -921,5 +921,22 @@ def apply_phase72_label_review_command(
     typer.echo(json.dumps(summary, indent=2))
 
 
+@app.command("judge-phase72-label-review")
+def judge_phase72_label_review_command(
+    review: Annotated[Path, typer.Option(exists=True)] = Path("experiments/phase72_label_review.jsonl"),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase72_label_judgments.jsonl"),
+    model_id: Annotated[str, typer.Option()] = "Qwen/Qwen2.5-3B-Instruct",
+    resume: Annotated[bool, typer.Option("--resume/--no-resume")] = True,
+) -> None:
+    """Judge ambiguous Phase 7.2 labels on a CUDA/Colab runtime."""
+    from adaptivedepth.routing.application_labels import judge_application_label_review
+
+    summary = judge_application_label_review(
+        review_path=review, output_path=output, model_id=model_id,
+        resume=resume, progress=typer.echo,
+    )
+    typer.echo(json.dumps(summary, indent=2))
+
+
 if __name__ == "__main__":
     app()

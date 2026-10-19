@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+import json
+from pathlib import Path
 
 from adaptivedepth.config import load_phase72_settings, load_phase8_settings
 from adaptivedepth.config import load_phase72_application_settings
 from adaptivedepth.routing.cascade_optimizer import _policy_payload
+from adaptivedepth.routing.application_labels import (
+    _parse_judge_response,
+    task_family,
+)
 from adaptivedepth.routing.phase72_router import route_prompt_phase72
 from adaptivedepth.routing.rescue import _choose_threshold, predict_rescue
 
@@ -13,6 +19,29 @@ from adaptivedepth.routing.rescue import _choose_threshold, predict_rescue
 class _Estimator:
     def predict_proba(self, rows):
         return np.asarray([[0.8, 0.2] for _ in range(rows.shape[0])])
+
+
+def test_application_label_review_contract_and_notebook() -> None:
+    assert task_family('What is an ATV?') == 'closed_qa'
+    assert task_family('Question?\n\nContext:\nEvidence') == 'context_qa'
+    assert task_family('Identify which item is red: apple, sky') == 'classification'
+    assert task_family('Write a short paragraph') == 'instruction'
+    judgment = _parse_judge_response(
+        '```json\n{"verdict":"safe_route","confidence":0.9,'
+        '"reason":"Equivalent answer"}\n```'
+    )
+    assert judgment['verdict'] == 'safe_route'
+    notebook = json.loads(
+        Path('notebooks/phase72_semantic_label_review_colab.ipynb').read_text(
+            encoding='utf-8'
+        )
+    )
+    source = ''.join(
+        line for cell in notebook['cells'] for line in cell.get('source', [])
+    )
+    assert notebook['nbformat'] == 4
+    assert 'judge-phase72-label-review' in source
+    assert 'GITHUB_TOKEN' in source
 
 
 def test_disabled_phase72_router_fails_closed() -> None:
