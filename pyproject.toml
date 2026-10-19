@@ -4,13 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adaptivedepth"
-version = "0.1.0"
-description = "Risk-aware adaptive transformer depth experiments"
+version = "0.2.0"
+description = "Verified adaptive-depth generation for causal language models"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 dependencies = [
-  "numpy>=1.26",
   "pydantic>=2.7",
   "PyYAML>=6.0",
   "torch>=2.2",
@@ -19,9 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "scikit-learn>=1.4,<2"]
-data = ["datasets>=3.0"]
-router = ["scikit-learn>=1.4,<2"]
+dev = ["pytest>=8.0"]
 
 [project.scripts]
 adaptivedepth = "adaptivedepth.cli:app"

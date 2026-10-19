@@ -1,0 +1,14 @@
+model:
+  model_id: Qwen/Qwen2.5-0.5B-Instruct
+  device: auto
+  dtype: auto
+  trust_remote_code: false
+  local_files_only: false
+  layer_path: model.layers
+
+benchmark:
+  max_new_tokens: 64
+  warmup_runs: 1
+  measured_runs: 3
+  use_chat_template: true
+  fixed_generation_length: false

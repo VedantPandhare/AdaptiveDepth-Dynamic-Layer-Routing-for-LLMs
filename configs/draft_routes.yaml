@@ -1,0 +1,14 @@
+# Initial routes for verified self-speculative decoding.
+# Their output is never returned directly: every proposed token is checked by
+# the full-depth target before it is committed.
+routes:
+  - route_id: draft_aggressive
+    active_layers: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 20, 22, 23]
+    source: verified_generation_initial
+    metadata:
+      role: lower-cost draft proposal
+  - route_id: draft_conservative
+    active_layers: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23]
+    source: verified_generation_initial
+    metadata:
+      role: higher-agreement draft proposal
