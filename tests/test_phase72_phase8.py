@@ -42,6 +42,15 @@ def test_application_label_review_contract_and_notebook() -> None:
     assert notebook['nbformat'] == 4
     assert 'judge-phase72-label-review' in source
     assert 'GITHUB_TOKEN' in source
+    assert 'stderr=subprocess.STDOUT' in source
+    assert 'subprocess.run(command,check=True)' not in source
+
+
+def test_truncated_judge_response_is_rejected_for_conservative_retry() -> None:
+    with pytest.raises(ValueError, match='did not return JSON'):
+        _parse_judge_response(
+            '{"verdict":"full_model","confidence":1,"reason":"truncated'
+        )
 
 
 def test_disabled_phase72_router_fails_closed() -> None:

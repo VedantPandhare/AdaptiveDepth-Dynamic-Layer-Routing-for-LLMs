@@ -146,13 +146,19 @@ def judge_application_label_review(
     output_path: str | Path,
     model_id: str = 'Qwen/Qwen2.5-3B-Instruct',
     max_input_tokens: int = 2048,
-    max_new_tokens: int = 96,
+    max_new_tokens: int = 192,
     resume: bool = True,
     progress: Any | None = None,
 ) -> dict[str, Any]:
     """Run a conservative reference-assisted semantic judge on a GPU runtime."""
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            'The semantic label judge requires a CUDA GPU. In Colab, select '
+            'Runtime > Change runtime type > T4 GPU and rerun the setup cell.'
+        )
 
     review_path, output_path = Path(review_path), Path(output_path)
     reviews = [
@@ -167,7 +173,7 @@ def judge_application_label_review(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     model = AutoModelForCausalLM.from_pretrained(
-        model_id, torch_dtype='auto', device_map='auto'
+        model_id, torch_dtype=torch.float16, device_map='auto'
     )
     model.eval()
     system = (
@@ -177,9 +183,12 @@ def judge_application_label_review(
         'correctness, relevance, completeness, and grounding, and adds no critical '
         'factual error. Allow harmless paraphrasing and stylistic differences. '
         'When uncertain choose full_model. Return exactly one JSON object with '
-        'verdict (safe_route or full_model), confidence (0 to 1), and a short reason.'
+        'verdict (safe_route or full_model), confidence (0 to 1), and a reason '
+        'of at most 20 words. Do not use Markdown or add text outside the JSON.'
     )
     written = 0
+    retry_recoveries = 0
+    invalid_output_fallbacks = 0
     with output_path.open('a', encoding='utf-8') as handle:
         for position, row in enumerate(reviews, start=1):
             if row['review_key'] in completed:
@@ -191,34 +200,77 @@ def judge_application_label_review(
                 f"REDUCED-ROUTE CANDIDATE:\n{row['route_response']}\n\n"
                 f"REFERENCE:\n{row['reference'][:3000]}"
             )
-            rendered = tokenizer.apply_chat_template(
-                [
-                    {'role': 'system', 'content': system},
-                    {'role': 'user', 'content': user},
-                ],
-                tokenize=False,
-                add_generation_prompt=True,
-            )
-            inputs = tokenizer(
-                rendered, return_tensors='pt', truncation=True,
-                max_length=max_input_tokens,
-            ).to(model.device)
-            with torch.inference_mode():
-                generated = model.generate(
-                    **inputs, max_new_tokens=max_new_tokens, do_sample=False,
-                    pad_token_id=tokenizer.eos_token_id,
+            judgment = None
+            last_error: ValueError | json.JSONDecodeError | None = None
+            attempts_used = 0
+            for attempt in range(2):
+                attempts_used = attempt + 1
+                attempt_system = system
+                if attempt:
+                    attempt_system += (
+                        ' Your previous answer was invalid or truncated. Keep the '
+                        'reason under 12 words and close the JSON object.'
+                    )
+                rendered = tokenizer.apply_chat_template(
+                    [
+                        {'role': 'system', 'content': attempt_system},
+                        {'role': 'user', 'content': user},
+                    ],
+                    tokenize=False,
+                    add_generation_prompt=True,
                 )
-            response = tokenizer.decode(
-                generated[0, inputs['input_ids'].shape[1]:],
-                skip_special_tokens=True,
-            )
-            judgment = _parse_judge_response(response)
+                inputs = tokenizer(
+                    rendered, return_tensors='pt', truncation=True,
+                    max_length=max_input_tokens,
+                ).to(model.device)
+                with torch.inference_mode():
+                    generated = model.generate(
+                        **inputs,
+                        max_new_tokens=(
+                            max_new_tokens if not attempt
+                            else max(max_new_tokens, 256)
+                        ),
+                        do_sample=False,
+                        pad_token_id=tokenizer.eos_token_id,
+                    )
+                response = tokenizer.decode(
+                    generated[0, inputs['input_ids'].shape[1]:],
+                    skip_special_tokens=True,
+                )
+                try:
+                    judgment = _parse_judge_response(response)
+                    if attempt:
+                        retry_recoveries += 1
+                    break
+                except (ValueError, json.JSONDecodeError) as error:
+                    last_error = error
+                    if progress:
+                        progress(
+                            f'Invalid judge output for {row["review_key"]} '
+                            f'(attempt {attempts_used}/2); retrying conservatively.'
+                        )
+            judge_status = 'parsed'
+            if judgment is None:
+                invalid_output_fallbacks += 1
+                judge_status = 'invalid_output_fallback'
+                judgment = {
+                    'verdict': 'full_model',
+                    'confidence': 1.0,
+                    'reason': 'Conservative fallback after two invalid judge outputs.',
+                }
+                if progress:
+                    progress(
+                        f'Using full_model fallback for {row["review_key"]}: '
+                        f'{last_error}'
+                    )
             payload = {
                 'review_key': row['review_key'],
                 'example_id': row['example_id'],
                 'route_id': row['route_id'],
                 **judgment,
                 'reviewer': model_id,
+                'judge_status': judge_status,
+                'attempts': attempts_used,
             }
             handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + '\n')
             handle.flush()
@@ -229,6 +281,8 @@ def judge_application_label_review(
         'review_examples': len(reviews),
         'previously_completed': len(completed),
         'newly_completed': written,
+        'retry_recoveries': retry_recoveries,
+        'invalid_output_fallbacks': invalid_output_fallbacks,
         'output': str(output_path),
         'model_id': model_id,
     }
