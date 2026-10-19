@@ -1,0 +1,19 @@
+seed: 17
+outer_cv_folds: 5
+calibration_cv_folds: 3
+calibration_method: sigmoid
+word_features: 4096
+char_features: 4096
+logistic_c: 1.0
+threshold_search_trials: 200000
+max_dense_route_candidates: 60
+target_safe_precision: 0.80
+# Development-only allowance after conservative semantic relabeling produced
+# 4% candidate coverage. The final application gate remains 34% at 90%
+# precision in configs/phase72_application.yaml.
+min_policy_coverage: 0.04
+min_selected_routes: 2
+min_gross_latency_reduction: 0.005
+max_expected_calibration_error: 0.15
+max_brier_score: 0.20
+calibration_bins: 10

@@ -23,6 +23,7 @@ from adaptivedepth.config import (
     load_phase71_settings,
     load_phase72_settings,
     load_phase72_application_settings,
+    load_phase81_probe_settings,
     load_phase8_settings,
     load_phase7_settings,
     load_project_settings,
@@ -936,6 +937,89 @@ def judge_phase72_label_review_command(
         resume=resume, progress=typer.echo,
     )
     typer.echo(json.dumps(summary, indent=2))
+
+
+@app.command("collect-phase81-probes")
+def collect_phase81_probes_command(
+    checkpoint: Annotated[Path, typer.Option(exists=True, file_okay=False)],
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path(
+        "experiments/phase72_application_dataset.jsonl"
+    ),
+    config: Annotated[Path, typer.Option(exists=True)] = Path(
+        "configs/phase81_probe_t4.yaml"
+    ),
+    routes_file: Annotated[Path, typer.Option(exists=True)] = Path(
+        "configs/phase61_routes.yaml"
+    ),
+    output: Annotated[Path, typer.Option()] = Path(
+        "experiments/phase81_probe_signals.jsonl"
+    ),
+    max_examples: Annotated[int | None, typer.Option(min=1)] = None,
+    resume: Annotated[bool, typer.Option("--resume/--no-resume")] = True,
+) -> None:
+    """Collect four-token logit and shared-hidden signals on a CUDA runtime."""
+    from adaptivedepth.model.loading import load_model
+    from adaptivedepth.routing.probe_signals import collect_phase81_probe_signals
+
+    settings = load_phase81_probe_settings(config)
+    checkpoint_path = checkpoint.resolve()
+    model_settings = settings.model.model_copy(
+        update={"model_id": str(checkpoint_path), "local_files_only": True}
+    )
+    routed_model, tokenizer, device = load_model(model_settings)
+    if device.type != "cuda":
+        raise typer.BadParameter(
+            "Phase 8.1 probe collection requires a CUDA GPU",
+            param_hint="--checkpoint",
+        )
+    routes = RouteLibrary.load(routes_file)
+    summary = collect_phase81_probe_signals(
+        routed_model=routed_model,
+        tokenizer=tokenizer,
+        device=device,
+        dataset_path=dataset,
+        routes=routes.routes,
+        output_path=output,
+        settings=settings,
+        max_examples=max_examples,
+        resume=resume,
+        progress=typer.echo,
+    )
+    typer.echo(json.dumps(summary, indent=2))
+
+
+@app.command("evaluate-phase81-probes")
+def evaluate_phase81_probes_command(
+    probes: Annotated[Path, typer.Option(exists=True)] = Path(
+        "experiments/phase81_probe_signals.jsonl"
+    ),
+    dataset: Annotated[Path, typer.Option(exists=True)] = Path(
+        "experiments/phase72_application_dataset.jsonl"
+    ),
+    router_oof: Annotated[Path, typer.Option(exists=True)] = Path(
+        "experiments/phase72_semantic/oof_predictions.jsonl"
+    ),
+    config: Annotated[Path, typer.Option(exists=True)] = Path(
+        "configs/phase81_probe_t4.yaml"
+    ),
+    application_config: Annotated[Path, typer.Option(exists=True)] = Path(
+        "configs/phase72_application.yaml"
+    ),
+    output: Annotated[Path, typer.Option()] = Path("experiments/phase81"),
+) -> None:
+    """Evaluate new runtime signals with grouped OOF predictions and a hard gate."""
+    from adaptivedepth.routing.probe_signals import evaluate_phase81_probe_signals
+
+    report = evaluate_phase81_probe_signals(
+        dataset_path=dataset,
+        probes_path=probes,
+        router_oof_path=router_oof,
+        settings=load_phase81_probe_settings(config),
+        application_settings=load_phase72_application_settings(application_config),
+        output_dir=output,
+    )
+    typer.echo(f"Phase 8.1 verdict: {report['verdict']}")
+    typer.echo(f"Report: {output / 'gate.md'}")
 
 
 if __name__ == "__main__":

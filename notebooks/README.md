@@ -59,6 +59,11 @@ a response-preserving 400-prompt comparison of Routes 20-23. It rotates timing
 order, writes cheapest-safe targets, and stores its resumable workspace in
 Drive. See [`../docs/PHASE61_RUNBOOK.md`](../docs/PHASE61_RUNBOOK.md).
 
+`phase81_runtime_signal_pilot_colab.ipynb` runs the bounded Route 20/23
+four-token confidence and shared-hidden-state pilot. It reuses the existing
+Drive artifacts and writes a resumable signal JSONL for CPU-only evaluation.
+See [`../docs/PHASE81_PROBE_PILOT.md`](../docs/PHASE81_PROBE_PILOT.md).
+
 `phase71_multiroute_router_drive.ipynb` trains and evaluates the CPU-only
 fastest-confident policy from `phase61_artifacts.zip`. It packages the fitted
 router and its fail-closed gate without loading an LLM or requiring a GPU. See

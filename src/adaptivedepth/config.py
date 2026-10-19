@@ -275,6 +275,21 @@ class Phase72ApplicationSettings(BaseModel):
         return self
 
 
+class Phase81ProbeSettings(BaseModel):
+    """Bounded runtime-signal pilot before committing to a new router."""
+
+    model_config = ConfigDict(extra="forbid")
+    model: ModelSettings = Field(default_factory=ModelSettings)
+    seed: int = 17
+    probe_tokens: int = Field(default=4, ge=1, le=16)
+    shared_hidden_index: int = Field(default=10, ge=1)
+    group_cv_folds: int = Field(default=5, ge=2, le=10)
+    logistic_c: float = Field(default=0.10, gt=0)
+    target_precision: float = Field(default=0.90, gt=0, le=1)
+    go_no_go_coverage: float = Field(default=0.30, gt=0, lt=1)
+    max_median_probe_fraction: float = Field(default=0.50, gt=0, le=1)
+
+
 def _load_yaml(path: str | Path) -> dict:
     with Path(path).open("r", encoding="utf-8") as handle:
         value = yaml.safe_load(handle)
@@ -327,3 +342,7 @@ def load_phase8_settings(path: str | Path) -> Phase8RescueSettings:
 
 def load_phase72_application_settings(path: str | Path) -> Phase72ApplicationSettings:
     return Phase72ApplicationSettings.model_validate(_load_yaml(path))
+
+
+def load_phase81_probe_settings(path: str | Path) -> Phase81ProbeSettings:
+    return Phase81ProbeSettings.model_validate(_load_yaml(path))
