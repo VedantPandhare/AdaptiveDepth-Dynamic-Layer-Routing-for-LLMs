@@ -1,8 +1,0 @@
-{"instruction":"What is the capital of France?","context":"","response":"Paris is the capital of France."}
-{"instruction":"Explain photosynthesis in one sentence.","context":"","response":"Photosynthesis uses light energy to convert carbon dioxide and water into glucose and oxygen."}
-{"instruction":"What is 17 multiplied by 6?","context":"","response":"17 multiplied by 6 is 102."}
-{"instruction":"Rewrite this politely: Give me the document.","context":"","response":"Could you please give me the document?"}
-{"instruction":"Which planet is known for its prominent rings?","context":"","response":"Saturn is known for its prominent rings."}
-{"instruction":"State one reason unit tests are useful.","context":"","response":"Unit tests catch regressions by checking that individual components continue to behave as expected."}
-{"instruction":"Summarize the text in one sentence.","context":"The library closes at six on weekdays and remains closed on Sunday.","response":"The library closes at 6 p.m. on weekdays and is closed on Sunday."}
-{"instruction":"If all tulips are flowers and some flowers are red, must some tulips be red?","context":"","response":"No, the red flowers are not necessarily tulips."}

@@ -1,6 +1,0 @@
-{"id":"fact-001","category":"factual_qa","prompt":"Answer with only the answer. What is the capital of France?","reference":"Paris"}
-{"id":"fact-002","category":"factual_qa","prompt":"Answer with only the answer. Which planet is known as the Red Planet?","reference":"Mars"}
-{"id":"fact-003","category":"factual_qa","prompt":"Answer with only the answer. What gas do plants absorb from the atmosphere?","reference":"carbon dioxide"}
-{"id":"reason-001","category":"multiple_choice","prompt":"Answer with only the option letter. If every wug is a dax and every dax is a mip, then every wug is: A) a mip B) not a mip C) both D) unknown","reference":"A"}
-{"id":"reason-002","category":"multiple_choice","prompt":"Answer with only the option letter. A train travels 60 km in one hour. At the same rate, how far does it travel in 3 hours? A) 20 km B) 60 km C) 120 km D) 180 km","reference":"D"}
-{"id":"reason-003","category":"multiple_choice","prompt":"Answer with only the option letter. Which number completes the sequence 2, 4, 8, 16, __? A) 18 B) 24 C) 32 D) 64","reference":"C"}

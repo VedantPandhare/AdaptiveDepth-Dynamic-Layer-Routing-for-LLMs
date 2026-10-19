@@ -1,9 +1,0 @@
-routes:
-  - route_id: route_target_21
-    active_layers: [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 20, 21, 22, 23]
-    source: phase5_targeted_correction
-    metadata:
-      original_route_id: random_b21_v00
-      pre_correction_quality_delta: -0.0333
-      pre_correction_latency_reduction: 0.112
-      pre_correction_teacher_kl: 0.6625

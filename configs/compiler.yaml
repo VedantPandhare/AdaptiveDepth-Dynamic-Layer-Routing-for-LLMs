@@ -1,5 +1,0 @@
-budgets: [12, 14, 16, 18, 20]
-preserve_first: 2
-preserve_last: 2
-variants_per_budget: 4
-seed: 17

@@ -1,7 +1,0 @@
-# Phase 4 search after aggressive 12-20-layer routes failed the smoke quality gate.
-# Budgets 21-23 probe the quality boundary; budget 20 remains as an anchor.
-budgets: [20, 21, 22, 23]
-preserve_first: 2
-preserve_last: 2
-variants_per_budget: 4
-seed: 17

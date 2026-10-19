@@ -1,4 +1,0 @@
-max_full_quality_drop: 0.05
-max_route_quality_drop: 0.05
-min_latency_reduction: 0.10
-max_teacher_divergence: 0.50
